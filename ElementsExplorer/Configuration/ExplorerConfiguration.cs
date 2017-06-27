@@ -32,7 +32,7 @@ namespace ElementsExplorer.Configuration
 		{
 			get;
 			set;
-		}
+		} = new List<IPEndPoint>();
 		public RPCArgs RPC
 		{
 			get;

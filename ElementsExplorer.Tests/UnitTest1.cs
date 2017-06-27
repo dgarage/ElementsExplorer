@@ -8,6 +8,10 @@ namespace ElementsExplorer.Tests
         [Fact]
         public void Test1()
         {
+			using(var tester = ServerTester.Create())
+			{
+
+			}
         }
     }
 }

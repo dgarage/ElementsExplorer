@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.AspNetCore.Mvc;
+using NBitcoin.JsonConverters;
+using Microsoft.Extensions.Options;
 
 namespace ElementsExplorer
 {
@@ -25,17 +29,40 @@ namespace ElementsExplorer
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Add framework services.
-            services.AddMvc();
-        }
+			services.AddSingleton<IObjectModelValidator, NoObjectModelValidator>();
+			services.AddMvcCore()
+				.AddJsonFormatters()
+				.AddFormatterMappings();
+		}
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+		internal class NoObjectModelValidator : IObjectModelValidator
+		{
+			public void Validate(ActionContext actionContext, ValidationStateDictionary validationState, string prefix, object model)
+			{
+
+			}
+		}
+
+		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+		public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
         {
-            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
-            loggerFactory.AddDebug();
+			var logging = new FilterLoggerSettings();
+			logging.Add("Microsoft.AspNetCore.Hosting.Internal.WebHost", LogLevel.Error);
+			logging.Add("Microsoft.AspNetCore.Mvc", LogLevel.Error);
+			logging.Add("Microsoft.AspNetCore.Server.Kestrel", LogLevel.Error);
+			loggerFactory
+				.WithFilter(logging)
+				.AddConsole();
 
-            app.UseMvc();
-        }
-    }
+			app.UseMvc();
+
+			var config = serviceProvider.GetService<ExplorerRuntime>();
+			var options = GetMVCOptions(serviceProvider);
+			Serializer.RegisterFrontConverters(options.SerializerSettings, config.Network);
+		}
+		private static MvcJsonOptions GetMVCOptions(IServiceProvider serviceProvider)
+		{
+			return serviceProvider.GetRequiredService<IOptions<MvcJsonOptions>>().Value;
+		}
+	}
 }

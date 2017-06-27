@@ -172,27 +172,40 @@ namespace NBitcoin.Tests
 			}
 		}
 
+		public bool CleanBeforeStartingNode
+		{
+			get; set;
+		} = true;
+
 		public CoreNode CreateNode(bool start = false)
 		{
 			var child = Path.Combine(_Root, last.ToString());
 			last++;
-			try
+
+			if(CleanBeforeStartingNode)
 			{
-				Directory.Delete(child, true);
-			}
-			catch(DirectoryNotFoundException)
-			{
-			}
+				try
+				{
+					Directory.Delete(child, true);
+				}
+				catch(DirectoryNotFoundException)
+				{
+				}
+				
+			}			
 			var node = new CoreNode(child, this);
 			Nodes.Add(node);
 			if(start)
 				node.Start();
 			return node;
 		}
-
 		public void StartAll()
 		{
-			Task.WaitAll(Nodes.Where(n => n.State == CoreNodeState.Stopped).Select(n => n.StartAsync()).ToArray());
+			StartAllAsync().GetAwaiter().GetResult();
+		}
+		public Task StartAllAsync()
+		{
+			return Task.WhenAll(Nodes.Where(n => n.State == CoreNodeState.Stopped).Select(n => n.StartAsync()).ToArray());
 		}
 
 		public void Dispose()
@@ -253,10 +266,13 @@ namespace NBitcoin.Tests
 			this._Builder = builder;
 			this._Folder = folder;
 			_State = CoreNodeState.Stopped;
-			CleanFolder();
-			Directory.CreateDirectory(folder);
+			if(builder.CleanBeforeStartingNode)
+				CleanFolder();
+			if(!Directory.Exists(folder))
+				Directory.CreateDirectory(folder);
 			dataDir = Path.Combine(folder, "data");
-			Directory.CreateDirectory(dataDir);
+			if(!Directory.Exists(dataDir))
+				Directory.CreateDirectory(dataDir);
 			var pass = Encoders.Hex.EncodeData(RandomUtils.GetBytes(20));
 			creds = new NetworkCredential(pass, pass);
 			_Config = Path.Combine(dataDir, "bitcoin.conf");
@@ -488,6 +504,14 @@ namespace NBitcoin.Tests
 				_State = CoreNodeState.Killed;
 				if(cleanFolder)
 					CleanFolder();
+			}
+		}
+
+		public void WaitForExit()
+		{
+			if(_Process != null && !_Process.HasExited)
+			{
+				_Process.WaitForExit();
 			}
 		}
 
