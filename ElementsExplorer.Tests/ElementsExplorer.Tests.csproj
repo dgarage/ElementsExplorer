@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ElementsExplorer\ElementsExplorer.csproj" />
+    <ProjectReference Include="..\NElements.TestFramework\NBitcoin.TestFramework.csproj" />
+    <ProjectReference Include="..\NElements\NBitcoin.NETCore\NBitcoin.NETCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>
