@@ -1,0 +1,3 @@
+[submodule "NElements"]
+	path = NElements
+	url = https://github.com/NicolasDorier/NElements
