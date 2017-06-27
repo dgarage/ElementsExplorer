@@ -12,6 +12,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace ElementsExplorer.Tests
 {
@@ -139,6 +142,25 @@ namespace ElementsExplorer.Tests
 			var user = Regex.Match(config, "rpcuser=([^\r\n]*)");
 			var pass = Regex.Match(config, "rpcpassword=([^\r\n]*)");
 			return Tuple.Create(user.Groups[1].Value, pass.Groups[1].Value);
+		}
+
+		public Uri Address
+		{
+			get
+			{
+
+				var address = ((KestrelServer)(Host.Services.GetService(typeof(IServer)))).Features.Get<IServerAddressesFeature>().Addresses.FirstOrDefault();
+				return new Uri(address);
+			}
+		}
+
+		ExplorerClient _Client;
+		public ExplorerClient Client
+		{
+			get
+			{
+				return _Client = _Client ?? new ExplorerClient(Runtime.Network, Address);
+			}
 		}
 
 		public CoreNode Explorer
