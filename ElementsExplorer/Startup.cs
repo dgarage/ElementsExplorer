@@ -54,6 +54,7 @@ namespace ElementsExplorer
 				.WithFilter(logging)
 				.AddConsole();
 
+			app.UseDeveloperExceptionPage();
 			app.UseMvc();
 
 			var config = serviceProvider.GetService<ExplorerRuntime>();

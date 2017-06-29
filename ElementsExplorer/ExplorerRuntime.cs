@@ -61,6 +61,7 @@ namespace ElementsExplorer
 					{
 						return this;
 					});
+					services.AddSingleton(Network);
 				})
 				.UseUrls(ServerUrls)
 				.Build();

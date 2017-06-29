@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 
 namespace ElementsExplorer
 {
-    public class ExplorerClient
-    {
+	public class ExplorerClient
+	{
 		public ExplorerClient(Network network, Uri serverAddress)
 		{
 			if(serverAddress == null)
@@ -20,6 +20,42 @@ namespace ElementsExplorer
 			_Address = serverAddress;
 			_Network = network;
 		}
+
+		public UTXOChanges Sync(BitcoinExtPubKey extKey, uint256 lastBlockHash)
+		{
+			return SyncAsync(extKey, lastBlockHash).GetAwaiter().GetResult();
+		}
+
+		public async Task<UTXOChanges> SyncAsync(BitcoinExtPubKey extKey, uint256 lastBlockHash)
+		{
+			var bytes = await SendAsync<byte[]>(HttpMethod.Get, null, "v1/sync/{0}?lastBlockHash={1}", extKey, lastBlockHash).ConfigureAwait(false);
+			UTXOChanges changes = new UTXOChanges();
+			changes.FromBytes(bytes);
+			return changes;
+		}
+
+		public string GetUTXOs(BitcoinExtPubKey extKey)
+		{
+			if(extKey == null)
+				throw new ArgumentNullException("extKey");
+			return GetUTXOsAsync(extKey).GetAwaiter().GetResult();
+		}
+
+		public bool Broadcast(Transaction tx)
+		{
+			return BroadcastAsync(tx).GetAwaiter().GetResult();
+		}
+
+		public Task<bool> BroadcastAsync(Transaction tx)
+		{
+			return SendAsync<bool>(HttpMethod.Post, tx.ToBytes(), "v1/broadcast");
+		}
+
+		public Task<string> GetUTXOsAsync(BitcoinExtPubKey extKey)
+		{
+			return SendAsync<string>(HttpMethod.Get, null, "v1/utxo/{0}", extKey);
+		}
+
 		private static readonly HttpClient SharedClient = new HttpClient();
 		internal HttpClient Client = SharedClient;
 
@@ -84,5 +120,9 @@ namespace ElementsExplorer
 			return Serializer.ToObject<T>(str, Network);
 		}
 
+		public void GetUTXOs()
+		{
+			throw new NotImplementedException();
+		}
 	}
 }
