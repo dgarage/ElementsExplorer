@@ -29,6 +29,12 @@ namespace ElementsExplorer.Configuration
 		{
 			get; set;
 		}
+		public bool NoTest
+		{
+			get;
+			set;
+		}
+
 		public RPCClient ConfigureRPCClient(Network network)
 		{
 			RPCClient rpcClient = null;
@@ -66,6 +72,8 @@ namespace ElementsExplorer.Configuration
 					}
 				}
 			}
+			if(NoTest)
+				return rpcClient;
 
 			Logs.Configuration.LogInformation("Testing RPC connection to " + rpcClient.Address.AbsoluteUri);
 			try

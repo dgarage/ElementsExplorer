@@ -94,7 +94,8 @@ namespace ElementsExplorer.Tests
 				{
 					User = creds.Item1,
 					Password = creds.Item2,
-					Url = Explorer.CreateRPCClient().Address
+					Url = Explorer.CreateRPCClient().Address,
+					NoTest = true
 				};
 				conf.NodeEndpoint = Explorer.Endpoint;
 

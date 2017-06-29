@@ -31,13 +31,16 @@ namespace ElementsExplorer
 			Logs.Configuration.LogInformation("Trying to connect to node: " + configuration.NodeEndpoint);
 			try
 			{
-				using(var node = Node.Connect(Network, configuration.NodeEndpoint))
+				if(!configuration.RPC.NoTest)
 				{
-					var cts = new CancellationTokenSource();
-					cts.CancelAfter(5000);
-					node.VersionHandshake(cts.Token);
+					using(var node = Node.Connect(Network, configuration.NodeEndpoint))
+					{
+						var cts = new CancellationTokenSource();
+						cts.CancelAfter(5000);
+						node.VersionHandshake(cts.Token);
+					}
+					Logs.Configuration.LogInformation("Node connection successfull");
 				}
-				Logs.Configuration.LogInformation("Node connection successfull");
 			}
 			catch(Exception ex)
 			{
