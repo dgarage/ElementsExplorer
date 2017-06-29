@@ -11,21 +11,22 @@ namespace ElementsExplorer.Tests
 		[Fact]
 		public void CanUseAPI()
 		{
-			//using(var tester = ServerTester.Create())
-			//{
-			//	var extKey = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
-			//	var changes = tester.Client.Sync(extKey.Neuter(), uint256.Zero);
-			//	var currentBlock = tester.Explorer.CreateRPCClient().GetBestBlockHash();
-			//	Assert.Equal(changes.BlockHash, currentBlock);
-			//	Assert.Equal(changes.SpentOutpoints.Count, 0);
-			//	Assert.Equal(changes.UTXOs.Count, 0);
+			using(var tester = ServerTester.Create())
+			{
+				var extKey = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
+				var currentBlock = tester.Explorer.CreateRPCClient().GetBestBlockHash();
+
+				var changes = tester.Client.Sync(extKey.Neuter(), currentBlock);
+				Assert.Equal(changes.BlockHash, currentBlock);
+				Assert.Equal(changes.SpentOutpoints.Count, 1);
+				Assert.Equal(changes.UTXOs.Count, 3);
 
 
 
 
-			//	//var result = tester.Client.GetUTXOs(extKey.Neuter());
-			//	//Assert.Equal("hello", result);
-			//}
+				//var result = tester.Client.GetUTXOs(extKey.Neuter());
+				//Assert.Equal("hello", result);
+			}
 		}
 
 
@@ -35,7 +36,9 @@ namespace ElementsExplorer.Tests
 			var changes = new UTXOChanges();
 			changes.BlockHash = new uint256(Enumerable.Range(1, 32).Select(c => (byte)c).ToArray());
 			changes.LoadChanges(_GoodTransaction, s => new KeyPath(0, 1, 2, 3));
-			var aa = Encoders.Hex.EncodeData(changes.ToBytes());
+			var bytes = changes.ToBytes();
+			changes = new UTXOChanges();
+			changes.FromBytes(changes.ToBytes());
 		}
 
 		[Fact]

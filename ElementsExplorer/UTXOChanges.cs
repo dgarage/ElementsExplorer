@@ -231,7 +231,7 @@ namespace ElementsExplorer
 			stream.ReadWriteAsVarString(ref _RangeProof);
 			stream.ReadWriteAsVarString(ref _SurjectionProof);
 
-			uint[] indexes = _KeyPath.Indexes;
+			uint[] indexes = _KeyPath?.Indexes ?? new uint[0];
 			stream.ReadWrite(ref indexes);
 			if(!stream.Serializing)
 				_KeyPath = new KeyPath(indexes);
