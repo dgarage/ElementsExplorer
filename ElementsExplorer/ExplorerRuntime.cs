@@ -11,6 +11,7 @@ using System.Threading;
 using ElementsExplorer.Logging;
 using Microsoft.AspNetCore.Hosting;
 using System.Net;
+using NBitcoin.Protocol.Behaviors;
 
 namespace ElementsExplorer
 {
@@ -20,6 +21,7 @@ namespace ElementsExplorer
 		{
 
 		}
+		NodesGroup _Nodes;
 		public ExplorerRuntime(ExplorerConfiguration configuration)
 		{
 			if(configuration == null)
@@ -46,6 +48,14 @@ namespace ElementsExplorer
 			{
 				Logs.Configuration.LogError("Error while connecting to node: " + ex.Message);
 			}
+
+			Chain = new ConcurrentChain(Network.GetGenesis().Header);
+			_Nodes = CreateNodeGroup(Chain);
+		}
+
+		public ConcurrentChain Chain
+		{
+			get; set;
 		}
 
 		public string[] ServerUrls
@@ -70,6 +80,33 @@ namespace ElementsExplorer
 				.Build();
 		}
 
+		NodesGroup CreateNodeGroup(ConcurrentChain chain)
+		{
+			AddressManager manager = new AddressManager();
+			manager.Add(new NetworkAddress(NodeEndpoint), IPAddress.Loopback);
+			NodesGroup group = new NodesGroup(Network, new NodeConnectionParameters()
+			{
+				Services = NodeServices.Nothing,
+				IsRelay = true,
+				TemplateBehaviors =
+				{
+					new AddressManagerBehavior(manager)
+					{
+						PeersToDiscover = 1,
+						Mode = AddressManagerBehaviorMode.None
+					},
+					new ChainBehavior(chain)
+					{
+						CanRespondToGetHeaders = false
+					}
+				}
+			});
+			group.AllowSameGroup = true;
+			group.MaximumNodeConnection = 1;
+			group.Connect();
+			return group;
+		}
+
 
 		public Network Network
 		{
@@ -86,9 +123,18 @@ namespace ElementsExplorer
 			set;
 		}
 
+		object l = new object();
 		public void Dispose()
 		{
+			lock(l)
+			{
 
+				if(_Nodes != null)
+				{
+					_Nodes.Disconnect();
+					_Nodes = null;
+				}
+			}
 		}
 	}
 }

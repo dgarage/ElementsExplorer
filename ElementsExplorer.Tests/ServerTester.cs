@@ -222,7 +222,7 @@ namespace ElementsExplorer.Tests
 		}
 
 		// http://stackoverflow.com/a/14933880/2061103
-		static void DeleteRecursivelyWithMagicDust(string destinationDir)
+		public static void DeleteRecursivelyWithMagicDust(string destinationDir)
 		{
 			const int magicDust = 10;
 			for(var gnomes = 1; gnomes <= magicDust; gnomes++)

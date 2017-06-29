@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NElements\NBitcoin.NETCore\NBitcoin.NETCore.csproj" />
+    <PackageReference Include="DBreeze" Version="1.87.0" />
 	  <PackageReference Include="Microsoft.AspNetCore" Version="1.1.2" />
 	  <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="1.1.3" />
 	  <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="1.1.2" />

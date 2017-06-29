@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using ElementsExplorer.Configuration;
 using ElementsExplorer.Logging;
+using NBitcoin.Protocol;
 
 namespace ElementsExplorer
 {
@@ -16,13 +17,15 @@ namespace ElementsExplorer
         public static void Main(string[] args)
         {
 			Logs.Configure(new FuncLoggerFactory(i => new CustomerConsoleLogger(i, (a, b) => true, false)));
+			IWebHost host = null;
 			try
 			{
 				var conf = new ExplorerConfiguration();
 				conf.LoadArgs(args);
 				using(var runtime = conf.CreateRuntime())
 				{
-					runtime.CreateWebHost().Run();
+					host = runtime.CreateWebHost();
+					host.Run();
 				}
 			}
 			catch(ConfigException ex)
@@ -34,7 +37,12 @@ namespace ElementsExplorer
 			{
 				Logs.Explorer.LogError("Exception thrown while running the server");
 				Logs.Explorer.LogError(exception.ToString());
-			}			
+			}
+			finally
+			{
+				if(host != null)
+					host.Dispose();
+			}
         }
     }
 }
