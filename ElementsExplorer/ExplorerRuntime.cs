@@ -12,6 +12,7 @@ using ElementsExplorer.Logging;
 using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using NBitcoin.Protocol.Behaviors;
+using System.IO;
 
 namespace ElementsExplorer
 {
@@ -49,8 +50,15 @@ namespace ElementsExplorer
 				Logs.Configuration.LogError("Error while connecting to node: " + ex.Message);
 			}
 
+			var dbPath = Path.Combine(configuration.DataDir, "db");
+			Repository = new Repository(dbPath, true);
 			Chain = new ConcurrentChain(Network.GetGenesis().Header);
 			_Nodes = CreateNodeGroup(Chain);
+		}
+
+		public Repository Repository
+		{
+			get; set;
 		}
 
 		public ConcurrentChain Chain
@@ -95,6 +103,7 @@ namespace ElementsExplorer
 						PeersToDiscover = 1,
 						Mode = AddressManagerBehaviorMode.None
 					},
+					new ExplorerBehavior(this),
 					new ChainBehavior(chain)
 					{
 						CanRespondToGetHeaders = false
@@ -133,6 +142,11 @@ namespace ElementsExplorer
 				{
 					_Nodes.Disconnect();
 					_Nodes = null;
+				}
+				if(Repository != null)
+				{
+					Repository.Dispose();
+					Repository = null;
 				}
 			}
 		}

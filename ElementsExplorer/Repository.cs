@@ -61,10 +61,39 @@ namespace ElementsExplorer
 			}
 		}
 
+		public BlockLocator GetIndexProgress()
+		{
+			using(var tx = _Engine.GetTransaction())
+			{
+				tx.ValuesLazyLoadingIsOn = false;
+				var existingRow = tx.Select<string, byte[]>("IndexProgress", "");
+				if(existingRow == null || !existingRow.Exists)
+					return null;
+				BlockLocator locator = new BlockLocator();
+				locator.FromBytes(existingRow.Value);
+				return locator;
+			}
+		}
+		public void SetIndexProgress(BlockLocator locator)
+		{
+			using(var tx = _Engine.GetTransaction())
+			{
+				if(locator == null)
+					tx.RemoveKey("IndexProgress", "");
+				else
+					tx.Insert("IndexProgress", "", locator.ToBytes());
+				tx.Commit();
+			}
+		}
+
 		public KeyInformation GetKeyInformation(Script script)
 		{
 			if(Caching)
-				return _Cache.TryGet(script.Hash);
+			{
+				KeyInformation v;
+				_Cache.TryGetValue(script.Hash, out v);
+				return v;
+			}
 			using(var tx = _Engine.GetTransaction())
 			{
 				tx.ValuesLazyLoadingIsOn = false;
@@ -159,6 +188,16 @@ namespace ElementsExplorer
 						tx.Insert(tableName, highestUnusedPath.ToString(), false, out inserted, out existed, dontUpdateIfExists: true);
 					}
 				}
+				tx.Commit();
+			}
+		}
+
+		public void AddTransaction(ExtPubKey pubkey, uint256 blockHash, Transaction transaction)
+		{
+			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
+			using(var tx = _Engine.GetTransaction())
+			{
+				tx.Insert(tableName, $"{transaction.GetHash()}:{blockHash}" , transaction.ToBytes());
 				tx.Commit();
 			}
 		}
