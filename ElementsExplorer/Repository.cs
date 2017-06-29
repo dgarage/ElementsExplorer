@@ -112,6 +112,8 @@ namespace ElementsExplorer
 
 				foreach(var row in tx.SelectForward<string, bool>(tableName))
 				{
+					if(info.KeyPath == null)
+						return; //Early exit, no need to create the first keys, it has already been done
 					var highestIndexes = row.Value ? highestUsedIndexes : highestUnusedIndexes;
 					KeyPath k = new KeyPath(row.Key);
 					long highestKey;
