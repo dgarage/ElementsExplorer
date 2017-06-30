@@ -157,7 +157,7 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/1"), utxo.Confirmed.UTXOs[0].KeyPath);
 
-				var outpoint01 = utxo.Unconfirmed.UTXOs[0].Outpoint;
+				var outpoint01 = utxo.Confirmed.UTXOs[0].Outpoint;
 
 				txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/2"), Money.Coins(1.0m));
 				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
@@ -188,7 +188,7 @@ namespace ElementsExplorer.Tests
 				Assert.True(!utxo.HasChange);
 				tester.Runtime.RPC.Generate(1);
 
-				utxo = tester.Client.Sync(key.Neuter(), before01Spend, null);
+				utxo = tester.Client.Sync(key.Neuter(), before01Spend, utxo.UnconfirmedHash);
 				Assert.True(!utxo.Unconfirmed.HasChanges);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/3"), utxo.Confirmed.UTXOs[0].KeyPath);
