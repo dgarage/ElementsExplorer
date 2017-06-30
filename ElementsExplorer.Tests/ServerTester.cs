@@ -100,6 +100,10 @@ namespace ElementsExplorer.Tests
 				conf.NodeEndpoint = Explorer.Endpoint;
 
 				Runtime = conf.CreateRuntime();
+
+				Runtime.Repository.SetIndexProgress(new BlockLocator() { Blocks = { Runtime.RPC.GetBestBlockHash() } });
+
+				Runtime.StartNodeListener();
 				Host = Runtime.CreateWebHost();
 				Host.Start();
 			}
@@ -131,7 +135,7 @@ namespace ElementsExplorer.Tests
 				User2.CreateRPCClient().SendCommandAsync("stop"),
 				Explorer.CreateRPCClient().SendCommandAsync("stop")
 			}.ToArray());
-			
+
 			User1.WaitForExit();
 			User2.WaitForExit();
 			Explorer.WaitForExit();
@@ -177,7 +181,7 @@ namespace ElementsExplorer.Tests
 		public CoreNode User2
 		{
 			get; set;
-		}		
+		}
 
 		public NodeBuilder NodeBuilder
 		{

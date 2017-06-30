@@ -21,24 +21,19 @@ namespace ElementsExplorer
 			_Network = network;
 		}
 
-		public UTXOChanges Sync(BitcoinExtPubKey extKey, uint256 lastBlockHash)
+		public UTXOChanges Sync(BitcoinExtPubKey extKey, uint256 lastBlockHash, uint256 unconfirmedHash, bool noWait =false)
 		{
-			return SyncAsync(extKey, lastBlockHash).GetAwaiter().GetResult();
+			return SyncAsync(extKey, lastBlockHash, unconfirmedHash, noWait).GetAwaiter().GetResult();
 		}
 
-		public async Task<UTXOChanges> SyncAsync(BitcoinExtPubKey extKey, uint256 lastBlockHash)
+		public async Task<UTXOChanges> SyncAsync(BitcoinExtPubKey extKey, uint256 lastBlockHash, uint256 unconfirmedHash, bool noWait = false)
 		{
-			var bytes = await SendAsync<byte[]>(HttpMethod.Get, null, "v1/sync/{0}?lastBlockHash={1}", extKey, lastBlockHash).ConfigureAwait(false);
+			lastBlockHash = lastBlockHash ?? uint256.Zero;
+			unconfirmedHash = unconfirmedHash ?? uint256.Zero;
+			var bytes = await SendAsync<byte[]>(HttpMethod.Get, null, "v1/sync/{0}?lastBlockHash={1}&unconfirmedHash={2}&noWait={3}", extKey, lastBlockHash, unconfirmedHash, noWait).ConfigureAwait(false);
 			UTXOChanges changes = new UTXOChanges();
 			changes.FromBytes(bytes);
 			return changes;
-		}
-
-		public string GetUTXOs(BitcoinExtPubKey extKey)
-		{
-			if(extKey == null)
-				throw new ArgumentNullException("extKey");
-			return GetUTXOsAsync(extKey).GetAwaiter().GetResult();
 		}
 
 		public bool Broadcast(Transaction tx)
@@ -49,11 +44,6 @@ namespace ElementsExplorer
 		public Task<bool> BroadcastAsync(Transaction tx)
 		{
 			return SendAsync<bool>(HttpMethod.Post, tx.ToBytes(), "v1/broadcast");
-		}
-
-		public Task<string> GetUTXOsAsync(BitcoinExtPubKey extKey)
-		{
-			return SendAsync<string>(HttpMethod.Get, null, "v1/utxo/{0}", extKey);
 		}
 
 		private static readonly HttpClient SharedClient = new HttpClient();
@@ -118,11 +108,6 @@ namespace ElementsExplorer
 			if(typeof(T) == typeof(string))
 				return (T)(object)str;
 			return Serializer.ToObject<T>(str, Network);
-		}
-
-		public void GetUTXOs()
-		{
-			throw new NotImplementedException();
 		}
 	}
 }

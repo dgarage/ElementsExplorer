@@ -4,13 +4,26 @@ using NBitcoin.Protocol;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using NBitcoin.Crypto;
 
 namespace ElementsExplorer
 {
 	public class UTXOChanges : IBitcoinSerializable
 	{
+		byte _IsDiff;
+		public bool Reset
+		{
+			get
+			{
+				return _IsDiff == 0;
+			}
+			set
+			{
+				_IsDiff = (byte)(value ? 0 : 1);
+			}
+		}
 
-		uint256 _BlockHash;
+		uint256 _BlockHash = uint256.Zero;
 		public uint256 BlockHash
 		{
 			get
@@ -23,6 +36,66 @@ namespace ElementsExplorer
 			}
 		}
 
+
+		uint256 _UnconfirmedHash = uint256.Zero;
+		public uint256 UnconfirmedHash
+		{
+			get
+			{
+				return _UnconfirmedHash;
+			}
+			set
+			{
+				_UnconfirmedHash = value;
+			}
+		}
+
+		public void ReadWrite(BitcoinStream stream)
+		{
+			stream.ReadWrite(ref _IsDiff);
+			stream.ReadWrite(ref _BlockHash);
+			stream.ReadWrite(ref _UnconfirmedHash);
+			stream.ReadWrite(ref _Unconfirmed);
+			stream.ReadWrite(ref _Confirmed);
+		}
+
+		UTXOChange _Unconfirmed = new UTXOChange();
+		public UTXOChange Unconfirmed
+		{
+			get
+			{
+				return _Unconfirmed;
+			}
+			set
+			{
+				_Unconfirmed = value;
+			}
+		}
+
+
+		UTXOChange _Confirmed = new UTXOChange();
+		public UTXOChange Confirmed
+		{
+			get
+			{
+				return _Confirmed;
+			}
+			set
+			{
+				_Confirmed = value;
+			}
+		}
+
+		public bool HasChange
+		{
+			get
+			{
+				return Confirmed.HasChanges || Unconfirmed.HasChanges;
+			}
+		}
+	}
+	public class UTXOChange : IBitcoinSerializable
+	{
 
 		List<OutPoint> _SpentOutpoints = new List<OutPoint>();
 		public List<OutPoint> SpentOutpoints
@@ -51,43 +124,101 @@ namespace ElementsExplorer
 			}
 		}
 
+		public bool HasChanges
+		{
+			get
+			{
+				return UTXOs.Count != 0 || SpentOutpoints.Count != 0;
+			}
+		}
+
 		public void ReadWrite(BitcoinStream stream)
 		{
-			stream.ReadWrite(ref _BlockHash);
 			stream.ReadWrite(ref _SpentOutpoints);
 			stream.ReadWrite(ref _UTXOs);
 		}
 
-		public bool LoadChanges(Transaction tx, Func<Script, KeyPath> getKeyPath)
+		public void LoadChanges(Transaction tx, Func<Script, KeyPath> getKeyPath)
 		{
 			if(tx == null)
 				throw new ArgumentNullException("tx");
 			tx.CacheHashes();
-			bool change = false;
-			if(UTXOs.Count != 0)
+
+			
+			var existingUTXOs = new HashSet<OutPoint>(UTXOs.Select(u => u.Outpoint));
+			var spentOutpoints = new HashSet<OutPoint>(SpentOutpoints);
+
+			foreach(var input in tx.Inputs)
 			{
-				var existingUTXOs = UTXOs.ToDictionary(u => u.Outpoint);
-				foreach(var input in tx.Inputs)
+				if(existingUTXOs.Remove(input.PrevOut))
 				{
-					if(existingUTXOs.Remove(input.PrevOut))
-					{
-						SpentOutpoints.Add(input.PrevOut);
-						change = true;
-					}
+					SpentOutpoints.Add(input.PrevOut);
 				}
 			}
+
 			int index = -1;
 			foreach(var output in tx.Outputs)
 			{
 				index++;
-				var keyPath = getKeyPath(output.ScriptPubKey);
-				if(keyPath != null)
+				if(!existingUTXOs.Contains(new OutPoint(tx.GetHash(), index)))
 				{
-					UTXOs.Add(new UTXO(new OutPoint(tx.GetHash(), index), output, keyPath));
-					change = true;
+					var keyPath = getKeyPath(output.ScriptPubKey);
+					if(keyPath != null)
+					{
+						UTXOs.Add(new UTXO(new OutPoint(tx.GetHash(), index), output, keyPath));
+					}
 				}
 			}
-			return change;
+		}
+
+		public bool HasConflict(Transaction tx)
+		{
+			var existingUTXOs = new HashSet<OutPoint>(UTXOs.Select(u => u.Outpoint));
+			var spentOutpoints = new HashSet<OutPoint>(SpentOutpoints);
+
+			//Check for conflicts
+			foreach(var input in tx.Inputs)
+			{
+				if(spentOutpoints.Contains(input.PrevOut))
+					return true;
+				spentOutpoints.Add(input.PrevOut);
+			}
+
+			var index = -1;
+			foreach(var output in tx.Outputs)
+			{
+				index++;
+				var outpoint = new OutPoint(tx.GetHash(), index);
+				if(existingUTXOs.Contains(outpoint))
+					return true;
+				existingUTXOs.Add(outpoint);
+			}
+			return false;
+		}
+
+		public UTXOChange Diff(UTXOChange previousChange)
+		{
+			var previousUTXOs = previousChange.UTXOs.ToDictionary(u => u.Outpoint);
+			var currentUTXOs = UTXOs.ToDictionary(u => u.Outpoint);
+
+			var deletedUTXOs = previousChange.UTXOs.Where(utxo => !currentUTXOs.ContainsKey(utxo.Outpoint));
+			var addedUTXOs = UTXOs.Where(utxo => !previousUTXOs.ContainsKey(utxo.Outpoint));
+
+			var diff = new UTXOChange();
+			foreach(var deleted in deletedUTXOs)
+			{
+				diff.SpentOutpoints.Add(deleted.Outpoint);
+			}
+			foreach(var added in addedUTXOs)
+			{
+				diff.UTXOs.Add(added);
+			}
+			return diff;
+		}
+
+		public uint256 GetHash()
+		{
+			return Hashes.Hash256(this.ToBytes());
 		}
 	}
 
@@ -196,7 +327,7 @@ namespace ElementsExplorer
 
 
 		KeyPath _KeyPath;
-		
+
 		public UTXO(OutPoint outPoint, TxOut output, KeyPath keyPath)
 		{
 			Outpoint = outPoint;

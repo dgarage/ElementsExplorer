@@ -24,6 +24,7 @@ namespace ElementsExplorer
 				conf.LoadArgs(args);
 				using(var runtime = conf.CreateRuntime())
 				{
+					runtime.StartNodeListener();
 					host = runtime.CreateWebHost();
 					host.Run();
 				}

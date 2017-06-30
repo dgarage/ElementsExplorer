@@ -12,6 +12,18 @@ using System.Text;
 
 namespace ElementsExplorer
 {
+	public class TrackedTransaction
+	{
+		public uint256 BlockHash
+		{
+			get; set;
+		}
+
+		public Transaction Transaction
+		{
+			get; set;
+		}
+	}
 	public class KeyInformation
 	{
 		public KeyInformation()
@@ -192,12 +204,57 @@ namespace ElementsExplorer
 			}
 		}
 
+
+
+
+		public TrackedTransaction[] GetTransactions(BitcoinExtPubKey pubkey)
+		{
+			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
+			var result = new List<TrackedTransaction>();
+			using(var tx = _Engine.GetTransaction())
+			{
+				foreach(var row in tx.SelectForward<string, byte[]>(tableName))
+				{
+					if(row == null || !row.Exists)
+						continue;
+					var transaction = new Transaction(row.Value);
+					var blockHash = row.Key.Split(':')[1];
+					var tracked = new TrackedTransaction();
+					if(blockHash.Length != 0)
+						tracked.BlockHash = new uint256(blockHash);
+					tracked.Transaction = transaction;
+					result.Add(tracked);
+				}
+			}
+			return result.ToArray();
+		}
+
 		public void AddTransaction(ExtPubKey pubkey, uint256 blockHash, Transaction transaction)
 		{
 			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
 			using(var tx = _Engine.GetTransaction())
 			{
-				tx.Insert(tableName, $"{transaction.GetHash()}:{blockHash}" , transaction.ToBytes());
+				tx.Insert(tableName, GetTransactionRowName(blockHash, transaction), transaction.ToBytes());
+				tx.Commit();
+			}
+		}
+
+		private static string GetTransactionRowName(uint256 blockHash, Transaction transaction)
+		{
+			return $"{transaction.GetHash()}:{blockHash}";
+		}
+
+		public void CleanTransactions(ExtPubKey pubkey, List<TrackedTransaction> cleanList)
+		{
+			if(cleanList == null || cleanList.Count == 0)
+				return;
+			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
+			using(var tx = _Engine.GetTransaction())
+			{
+				foreach(var tracked in cleanList)
+				{
+					tx.RemoveKey(tableName, GetTransactionRowName(tracked.BlockHash, tracked.Transaction));
+				}
 				tx.Commit();
 			}
 		}

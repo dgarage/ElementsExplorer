@@ -1,47 +1,21 @@
+using ElementsExplorer.Logging;
 using NBitcoin;
 using NBitcoin.DataEncoders;
 using System;
 using System.Linq;
 using System.Threading;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ElementsExplorer.Tests
 {
 	public class UnitTest1
 	{
-		[Fact]
-		public void CanUseAPI()
+		public UnitTest1(ITestOutputHelper output)
 		{
-			using(var tester = ServerTester.Create())
-			{
-				var extKey = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
-				var currentBlock = tester.Explorer.CreateRPCClient().GetBestBlockHash();
-
-				var changes = tester.Client.Sync(extKey.Neuter(), currentBlock);
-				Assert.Equal(changes.BlockHash, currentBlock);
-				Assert.Equal(changes.SpentOutpoints.Count, 1);
-				Assert.Equal(changes.UTXOs.Count, 3);
-
-				Thread.Sleep(1000);
-
-
-				//var result = tester.Client.GetUTXOs(extKey.Neuter());
-				//Assert.Equal("hello", result);
-			}
+			Logs.Configure(new TestOutputHelperFactory(output));
 		}
-
-
-		[Fact]
-		public void CanGetUTXO()
-		{
-			var changes = new UTXOChanges();
-			changes.BlockHash = new uint256(Enumerable.Range(1, 32).Select(c => (byte)c).ToArray());
-			changes.LoadChanges(_GoodTransaction, s => new KeyPath(0, 1, 2, 3));
-			var bytes = changes.ToBytes();
-			changes = new UTXOChanges();
-			changes.FromBytes(changes.ToBytes());
-		}
-
+		
 		[Fact]
 		public void RepositoryCanTrackAddresses()
 		{
@@ -66,7 +40,7 @@ namespace ElementsExplorer.Tests
 		static ExtPubKey pubKey = new ExtKey().Neuter();
 		private static void RepositoryCanTrackAddresses(RepositoryTester tester)
 		{
-			
+
 			tester.Repository.MarkAsUsed(new KeyInformation(pubKey));
 			var keyInfo = tester.Repository.GetKeyInformation(pubKey.Derive(new KeyPath("0/0")).PubKey.Hash.ScriptPubKey);
 			Assert.NotNull(keyInfo);
@@ -123,6 +97,67 @@ namespace ElementsExplorer.Tests
 			Assert.True(keyInfo.RootKey.SequenceEqual(pubKey.ToBytes()));
 			keyInfo = tester.Repository.GetKeyInformation(pubKey.Derive(new KeyPath("1/27")).PubKey.Hash.ScriptPubKey);
 			Assert.Null(keyInfo);
+		}
+
+		[Fact]
+		public void CanTrack()
+		{
+			using(var tester = ServerTester.Create())
+			{
+				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
+				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
+				var gettingUTXO = tester.Client.SyncAsync(key.Neuter(), null, null);
+				var txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
+				var utxo = gettingUTXO.GetAwaiter().GetResult();
+
+				
+				Assert.True(utxo.Reset);
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(0, utxo.Confirmed.UTXOs.Count);
+				Assert.Equal(uint256.Zero, utxo.BlockHash);
+				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.UnconfirmedHash);
+
+				tester.Runtime.RPC.Generate(1);
+				var prevUtxo = utxo;
+				utxo = tester.Client.Sync(key.Neuter(), prevUtxo.BlockHash, prevUtxo.UnconfirmedHash);
+				Assert.Equal(0, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				var bestBlockHash = tester.Runtime.RPC.GetBestBlockHash();
+				Assert.Equal(bestBlockHash, utxo.BlockHash);
+				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.UnconfirmedHash);
+
+				txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/1"), Money.Coins(1.0m));
+
+				prevUtxo = utxo;
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(0, utxo.Confirmed.UTXOs.Count);
+				utxo = tester.Client.Sync(key.Neuter(), null, null, true);
+
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/1"), utxo.Unconfirmed.UTXOs[0].KeyPath);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/0"), utxo.Confirmed.UTXOs[0].KeyPath);
+				Assert.Equal(bestBlockHash, utxo.BlockHash);
+				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.UnconfirmedHash);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, null, true);
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(0, utxo.Confirmed.UTXOs.Count);
+
+				utxo = tester.Client.Sync(key.Neuter(), null, utxo.UnconfirmedHash, true);
+				Assert.Equal(0, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+			}
+		}
+
+		private BitcoinAddress AddressOf(BitcoinExtKey key, string path)
+		{
+			var address = key.ExtKey.Derive(new KeyPath(path)).Neuter().PubKey.Hash.GetAddress(key.Network);
+			var indexes = new KeyPath(path).Indexes;
+			indexes[0] = indexes[0] + 2;
+			var blinding = key.ExtKey.Derive(new KeyPath(indexes)).Neuter().PubKey;
+			return address.AddBlindingKey(blinding);
 		}
 
 		[Fact]

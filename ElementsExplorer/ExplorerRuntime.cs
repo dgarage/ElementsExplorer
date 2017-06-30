@@ -1,4 +1,5 @@
 ﻿using ElementsExplorer.Configuration;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
 using System;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using NBitcoin.Protocol.Behaviors;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace ElementsExplorer
 {
@@ -30,12 +32,12 @@ namespace ElementsExplorer
 			Network = configuration.Network;
 			RPC = configuration.RPC.ConfigureRPCClient(configuration.Network);
 			NodeEndpoint = configuration.NodeEndpoint;
-			ServerUrls = configuration.GetUrls();
-			Logs.Configuration.LogInformation("Trying to connect to node: " + configuration.NodeEndpoint);
+			ServerUrls = configuration.GetUrls();			
 			try
 			{
 				if(!configuration.RPC.NoTest)
 				{
+					Logs.Configuration.LogInformation("Trying to connect to node: " + configuration.NodeEndpoint);
 					using(var node = Node.Connect(Network, configuration.NodeEndpoint))
 					{
 						var cts = new CancellationTokenSource();
@@ -52,13 +54,33 @@ namespace ElementsExplorer
 
 			var dbPath = Path.Combine(configuration.DataDir, "db");
 			Repository = new Repository(dbPath, true);
-			Chain = new ConcurrentChain(Network.GetGenesis().Header);
+			Chain = new ConcurrentChain(Network.GetGenesis().Header);			
+		}
+
+		public void StartNodeListener()
+		{
+			using(var node = Node.Connect(Network, NodeEndpoint))
+			{
+				var cts = new CancellationTokenSource();
+				cts.CancelAfter(5000);
+				node.VersionHandshake(cts.Token);
+				Chain = node.GetChain();
+			}
 			_Nodes = CreateNodeGroup(Chain);
 		}
 
 		public Repository Repository
 		{
 			get; set;
+		}
+
+		public async Task<bool> WaitFor(ExtPubKey extPubKey, CancellationToken token)
+		{
+			var node = _Nodes.ConnectedNodes.FirstOrDefault();
+			if(node == null)
+				return false;
+			await node.Behaviors.Find<ExplorerBehavior>().WaitFor(extPubKey, token).ConfigureAwait(false);
+			return true;
 		}
 
 		public ConcurrentChain Chain

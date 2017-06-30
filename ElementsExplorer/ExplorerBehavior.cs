@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
+using NBitcoin.Crypto;
+using Completion = System.Threading.Tasks.TaskCompletionSource<bool>;
 
 namespace ElementsExplorer
 {
@@ -44,6 +47,37 @@ namespace ElementsExplorer
 			_Timer = new Timer(Tick, null, 0, 30);
 		}
 
+
+		public async Task WaitFor(ExtPubKey pubKey, CancellationToken cancellation = default(CancellationToken))
+		{
+			TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+
+			var key = Hashes.Hash160(pubKey.ToBytes());
+
+			lock(_WaitFor)
+			{
+				_WaitFor.Add(key, completion);
+			}
+
+			cancellation.Register(() =>
+			{
+				completion.TrySetCanceled();
+			});
+
+			try
+			{
+				await completion.Task;
+			}
+			finally
+			{
+				lock(_WaitFor)
+				{
+					_WaitFor.Remove(key, completion);
+				}
+			}
+		}
+
+		MultiValueDictionary<uint160, Completion> _WaitFor = new MultiValueDictionary<uint160, Completion>();
 
 		public void AskBlocks()
 		{
@@ -111,6 +145,7 @@ namespace ElementsExplorer
 
 		private void AttachedNode_MessageReceived(Node node, IncomingMessage message)
 		{
+			Logs.Explorer.LogInformation($"Received {message.Message.Command}");
 			message.Message.IfPayloadIs<InvPayload>(invs =>
 			{
 				var data = new GetDataPayload();
@@ -143,6 +178,7 @@ namespace ElementsExplorer
 						foreach(var pubkey in pubKeys)
 						{
 							Runtime.Repository.AddTransaction(pubkey, block.Object.GetHash(), tx);
+							Notify(pubkey, false);
 						}
 					}
 					var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
@@ -162,9 +198,28 @@ namespace ElementsExplorer
 				foreach(var pubkey in pubKeys)
 				{
 					Runtime.Repository.AddTransaction(pubkey, null, txPayload.Object);
+					Notify(pubkey, true);
 				}
 			});
 
+		}
+
+		private void Notify(ExtPubKey pubkey, bool log)
+		{
+			if(log)
+				Logs.Explorer.LogInformation($"A wallet received money");
+			var key = Hashes.Hash160(pubkey.ToBytes());
+			lock(_WaitFor)
+			{
+				IReadOnlyCollection<Completion> completions;
+				if(_WaitFor.TryGetValue(key, out completions))
+				{
+					foreach(var completion in completions.ToList())
+					{
+						completion.TrySetResult(true);
+					}
+				}
+			}
 		}
 
 		private HashSet<ExtPubKey> GetInterestedWallet(Transaction tx)
@@ -197,6 +252,7 @@ namespace ElementsExplorer
 			{
 				Logs.Explorer.LogInformation($"Handshaked Elements node");
 				node.SendMessageAsync(new SendHeadersPayload());
+				node.SendMessageAsync(new MempoolPayload());
 				AskBlocks();
 			}
 			if(node.State == NodeState.Offline)

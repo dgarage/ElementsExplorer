@@ -360,6 +360,7 @@ namespace NBitcoin.Tests
 			config.Add("rpcport", ports[1].ToString());
 			config.Add("printtoconsole", "1");
 			config.Add("keypool", "10");
+			config.Add("whitebind", "127.0.0.1:" + ports[0]);
 			config.Import(ConfigParameters, true);
 			File.WriteAllText(_Config, config.ToString());
 			lock(l)
