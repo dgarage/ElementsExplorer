@@ -145,7 +145,6 @@ namespace ElementsExplorer
 
 		private void AttachedNode_MessageReceived(Node node, IncomingMessage message)
 		{
-			Logs.Explorer.LogInformation($"Received {message.Message.Command}");
 			message.Message.IfPayloadIs<InvPayload>(invs =>
 			{
 				var data = new GetDataPayload();
