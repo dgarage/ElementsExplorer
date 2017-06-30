@@ -142,10 +142,12 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.UnconfirmedHash);
 
 				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, null, true);
+				Assert.False(utxo.Reset);
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(0, utxo.Confirmed.UTXOs.Count);
 
 				utxo = tester.Client.Sync(key.Neuter(), null, utxo.UnconfirmedHash, true);
+				Assert.True(utxo.Reset);
 				Assert.Equal(0, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 			}
