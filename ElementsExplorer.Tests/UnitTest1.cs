@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
+using NBitcoin.RPC;
 
 namespace ElementsExplorer.Tests
 {
@@ -150,7 +151,61 @@ namespace ElementsExplorer.Tests
 				Assert.True(utxo.Reset);
 				Assert.Equal(0, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				tester.Runtime.RPC.Generate(1);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/1"), utxo.Confirmed.UTXOs[0].KeyPath);
+
+				var outpoint01 = utxo.Unconfirmed.UTXOs[0].Outpoint;
+
+				txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/2"), Money.Coins(1.0m));
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/2"), utxo.Unconfirmed.UTXOs[0].KeyPath);
+				tester.Runtime.RPC.Generate(1);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/2"), utxo.Confirmed.UTXOs[0].KeyPath);
+
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash, true);
+				Assert.True(!utxo.HasChange);
+
+				var before01Spend = utxo.BlockHash;
+
+				LockTestCoins(tester.Runtime.RPC);
+				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(key, "0/1"));
+				txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/3"), Money.Coins(0.5m));
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/3"), utxo.Unconfirmed.UTXOs[0].KeyPath);
+				Assert.Equal(1, utxo.Unconfirmed.SpentOutpoints.Count);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.True(!utxo.HasChange);
+				tester.Runtime.RPC.Generate(1);
+
+				utxo = tester.Client.Sync(key.Neuter(), before01Spend, null);
+				Assert.True(!utxo.Unconfirmed.HasChanges);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				Assert.Equal(new KeyPath("0/3"), utxo.Confirmed.UTXOs[0].KeyPath);
+				Assert.Equal(1, utxo.Confirmed.SpentOutpoints.Count);
+				Assert.Equal(outpoint01, utxo.Confirmed.SpentOutpoints[0]);
 			}
+		}
+
+		private void LockTestCoins(RPCClient rpc)
+		{
+			var outpoints = rpc.ListUnspent().Where(l => l.Address == null).Select(o => o.OutPoint).ToArray();
+			rpc.LockUnspent(outpoints);
+		}
+
+		private BitcoinSecret PrivateKeyOf(BitcoinExtKey key, string path)
+		{
+			return new BitcoinSecret(key.ExtKey.Derive(new KeyPath(path)).PrivateKey, key.Network);
 		}
 
 		private BitcoinAddress AddressOf(BitcoinExtKey key, string path)

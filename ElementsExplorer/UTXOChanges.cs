@@ -165,10 +165,13 @@ namespace ElementsExplorer
 					var keyPath = getKeyPath(output.ScriptPubKey);
 					if(keyPath != null)
 					{
-						UTXOs.Add(new UTXO(new OutPoint(tx.GetHash(), index), output, keyPath));
+						var outpoint = new OutPoint(tx.GetHash(), index);
+						UTXOs.Add(new UTXO(outpoint, output, keyPath));
+						existingUTXOs.Add(outpoint);
 					}
 				}
 			}
+			UTXOs = UTXOs.Where(u => existingUTXOs.Contains(u.Outpoint)).ToList();
 		}
 
 		public bool HasConflict(Transaction tx)

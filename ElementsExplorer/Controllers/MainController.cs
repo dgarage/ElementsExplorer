@@ -47,6 +47,7 @@ namespace ElementsExplorer.Controllers
 			UTXOChanges changes = null;
 			UTXOChanges previousChanges = null;
 			List<TrackedTransaction> cleanList = null;
+			var getKeyPath = GetKeyPaths(extPubKey);
 
 			while(true)
 			{
@@ -67,46 +68,41 @@ namespace ElementsExplorer.Controllers
 
 					if(transaction.BlockHash != null)
 						changes.BlockHash = transaction.BlockHash;
-
-					UTXOChange utxo = null;
+					
 					if(transaction.BlockHash == null)
 					{
-						utxo = changes.Unconfirmed;
-						if(utxo.HasConflict(transaction.Transaction) ||
+						if(changes.Unconfirmed.HasConflict(transaction.Transaction) ||
 							changes.Confirmed.HasConflict(transaction.Transaction))
 						{
 							cleanList.Add(transaction);
 							continue;
 						}
+						changes.Unconfirmed.LoadChanges(transaction.Transaction, getKeyPath);
 					}
 					else
 					{
-						utxo = changes.Confirmed;
-						if(utxo.HasConflict(transaction.Transaction))
+						if(changes.Confirmed.HasConflict(transaction.Transaction))
 						{
 							Logs.Explorer.LogError("A conflict among confirmed transaction happened, this should be impossible");
 							throw new InvalidOperationException("The impossible happened");
 						}
-					}
-
-					utxo.LoadChanges(transaction.Transaction, GetKeyPaths(extPubKey));
-
+						changes.Unconfirmed.LoadChanges(transaction.Transaction, getKeyPath);
+						changes.Confirmed.LoadChanges(transaction.Transaction, getKeyPath);
+					}					
 
 					if(transaction.BlockHash == lastBlockHash)
 						previousChanges = changes.Clone();
 				}
-
-
-				changes.UnconfirmedHash = changes.Unconfirmed.GetHash();
-				if(changes.UnconfirmedHash == unconfirmedHash)
-					changes.Unconfirmed = new UTXOChange();
-
+				
 				changes.Reset = previousChanges == null;
-
+				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
 				if(previousChanges != null)
 				{
 					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);
 				}
+				changes.UnconfirmedHash = changes.Unconfirmed.GetHash();
+				if(changes.UnconfirmedHash == unconfirmedHash)
+					changes.Unconfirmed = new UTXOChange();
 
 				if(noWait || changes.HasChange || !(await WaitingTransaction(extPubKey)))
 					break;
