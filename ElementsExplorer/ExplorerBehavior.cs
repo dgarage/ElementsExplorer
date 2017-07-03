@@ -177,6 +177,9 @@ namespace ElementsExplorer
 						foreach(var pubkey in pubKeys)
 						{
 							Runtime.Repository.AddTransaction(pubkey, block.Object.GetHash(), tx);
+						}
+						foreach(var pubkey in pubKeys)
+						{
 							Notify(pubkey, false);
 						}
 					}
@@ -197,6 +200,10 @@ namespace ElementsExplorer
 				foreach(var pubkey in pubKeys)
 				{
 					Runtime.Repository.AddTransaction(pubkey, null, txPayload.Object);
+				}
+
+				foreach(var pubkey in pubKeys)
+				{
 					Notify(pubkey, true);
 				}
 			});
@@ -224,6 +231,7 @@ namespace ElementsExplorer
 		private HashSet<ExtPubKey> GetInterestedWallet(Transaction tx)
 		{
 			var pubKeys = new HashSet<ExtPubKey>();
+			var added = new HashSet<uint160>();
 			tx.CacheHashes();
 			foreach(var input in tx.Inputs)
 			{
@@ -231,7 +239,7 @@ namespace ElementsExplorer
 				if(signer != null)
 				{
 					var keyInfo = Runtime.Repository.GetKeyInformation(signer.ScriptPubKey);
-					if(keyInfo != null)
+					if(keyInfo != null && added.Add(Hashes.Hash160(keyInfo.RootKey)))
 						pubKeys.Add(new ExtPubKey(keyInfo.RootKey));
 				}
 			}
