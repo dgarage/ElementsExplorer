@@ -123,6 +123,12 @@ namespace ElementsExplorer.Tests
 
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(0, utxo.Unconfirmed.SpentOutpoints.Count);
+
+				tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(0.15m));
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.Equal(2, utxo.Unconfirmed.UTXOs.Count);
+				Assert.Equal(0, utxo.Unconfirmed.SpentOutpoints.Count);
 			}
 		}
 

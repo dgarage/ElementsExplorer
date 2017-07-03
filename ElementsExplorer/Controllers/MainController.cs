@@ -68,7 +68,8 @@ namespace ElementsExplorer.Controllers
 								}).ToArray();
 
 				var confirmed = transactions
-					.OrderBy(t => GetHeight(t.BlockHash) != MempoolHeight)
+					.OrderBy(t => GetHeight(t.BlockHash))
+					.Where(t => t.BlockHash != null)
 					.ToArray();
 
 
