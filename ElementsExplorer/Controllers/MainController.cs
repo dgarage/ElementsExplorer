@@ -56,8 +56,23 @@ namespace ElementsExplorer.Controllers
 				var transactions = Runtime.Repository.GetTransactions(extPubKey);
 
 				var lastBlock = Runtime.Chain.GetBlock(lastBlockHash);
-				transactions = transactions.OrderBy(t => GetHeight(t.BlockHash)).ToArray();
-				foreach(var transaction in transactions)
+
+				var unconfirmed = transactions
+									.Where(t => GetHeight(t.BlockHash) == MempoolHeight)
+									.ToArray();
+				unconfirmed = unconfirmed
+								.TopologicalSort(t =>
+								{
+									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
+									return unconfirmed.Where(u => dependsOn.Contains(u.Transaction.GetHash()));
+								}).ToArray();
+
+				var confirmed = transactions
+					.OrderBy(t => GetHeight(t.BlockHash) != MempoolHeight)
+					.ToArray();
+
+
+				foreach(var transaction in confirmed.Concat(unconfirmed))
 				{
 					int height = GetHeight(transaction.BlockHash);
 					if(height == OrphanHeight)
@@ -68,7 +83,7 @@ namespace ElementsExplorer.Controllers
 
 					if(transaction.BlockHash != null)
 						changes.BlockHash = transaction.BlockHash;
-					
+
 					if(transaction.BlockHash == null)
 					{
 						if(changes.Unconfirmed.HasConflict(transaction.Transaction) ||
@@ -88,12 +103,12 @@ namespace ElementsExplorer.Controllers
 						}
 						changes.Unconfirmed.LoadChanges(transaction.Transaction, getKeyPath);
 						changes.Confirmed.LoadChanges(transaction.Transaction, getKeyPath);
-					}					
+					}
 
 					if(transaction.BlockHash == lastBlockHash)
 						previousChanges = changes.Clone();
 				}
-				
+
 				changes.Reset = previousChanges == null;
 				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
 				if(previousChanges != null)
