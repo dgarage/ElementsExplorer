@@ -152,9 +152,11 @@ namespace ElementsExplorer.Controllers
 
 		[HttpPost]
 		[Route("broadcast")]
-		public async Task<bool> Broadcast([FromBody]byte[] txBytes)
+		public async Task<bool> Broadcast()
 		{
-			var tx = new Transaction(txBytes);
+			var tx = new Transaction();
+			var stream = new BitcoinStream(Request.Body, false);
+			tx.ReadWrite(stream);
 			try
 			{
 				await Runtime.RPC.SendRawTransactionAsync(tx);

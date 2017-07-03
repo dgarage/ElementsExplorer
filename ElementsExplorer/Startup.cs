@@ -16,26 +16,26 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace ElementsExplorer
 {
-    public class Startup
-    {
-        public Startup(IHostingEnvironment env)
-        {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(env.ContentRootPath)
-                .AddEnvironmentVariables();
-            Configuration = builder.Build();
-        }
+	public class Startup
+	{
+		public Startup(IHostingEnvironment env)
+		{
+			var builder = new ConfigurationBuilder()
+				.SetBasePath(env.ContentRootPath)
+				.AddEnvironmentVariables();
+			Configuration = builder.Build();
+		}
 
-        public IConfigurationRoot Configuration { get; }
+		public IConfigurationRoot Configuration
+		{
+			get;
+		}
 
-        // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
-        {
+		// This method gets called by the runtime. Use this method to add services to the container.
+		public void ConfigureServices(IServiceCollection services)
+		{
 			services.AddSingleton<IObjectModelValidator, NoObjectModelValidator>();
-			services.AddMvcCore(options=>
-			{
-				options.InputFormatters.Add(new BinaryInputFormatter());
-			})
+			services.AddMvcCore()
 				.AddJsonFormatters()
 				.AddFormatterMappings();
 		}
@@ -50,7 +50,7 @@ namespace ElementsExplorer
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
 		public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
-        {
+		{
 			var logging = new FilterLoggerSettings();
 			logging.Add("Microsoft.AspNetCore.Hosting.Internal.WebHost", LogLevel.Error);
 			logging.Add("Microsoft.AspNetCore.Mvc", LogLevel.Error);
