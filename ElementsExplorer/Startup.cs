@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin.JsonConverters;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace ElementsExplorer
 {
@@ -30,7 +32,10 @@ namespace ElementsExplorer
         public void ConfigureServices(IServiceCollection services)
         {
 			services.AddSingleton<IObjectModelValidator, NoObjectModelValidator>();
-			services.AddMvcCore()
+			services.AddMvcCore(options=>
+			{
+				options.InputFormatters.Add(new BinaryInputFormatter());
+			})
 				.AddJsonFormatters()
 				.AddFormatterMappings();
 		}

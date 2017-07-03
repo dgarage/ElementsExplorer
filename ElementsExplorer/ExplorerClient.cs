@@ -88,7 +88,10 @@ namespace ElementsExplorer
 			var message = new HttpRequestMessage(method, uri);
 			if(body != null)
 			{
-				message.Content = new StringContent(Serializer.ToString(body, Network), Encoding.UTF8, "application/json");
+				if(body is byte[])
+					message.Content = new ByteArrayContent((byte[])body);
+				else
+					message.Content = new StringContent(Serializer.ToString(body, Network), Encoding.UTF8, "application/json");
 			}
 			var result = await Client.SendAsync(message).ConfigureAwait(false);
 			if(result.StatusCode == HttpStatusCode.NotFound)
