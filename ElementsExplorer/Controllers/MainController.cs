@@ -43,11 +43,13 @@ namespace ElementsExplorer.Controllers
 		{
 			lastBlockHash = lastBlockHash ?? uint256.Zero;
 
+			var waitingTransaction = noWait ? Task.FromResult(false) : WaitingTransaction(extPubKey);
+
 			Runtime.Repository.MarkAsUsed(new KeyInformation(extPubKey));
 			UTXOChanges changes = null;
 			UTXOChanges previousChanges = null;
 			List<TrackedTransaction> cleanList = null;
-			var getKeyPath = GetKeyPaths(extPubKey);
+			var getKeyPath = GetKeyPaths(extPubKey);			
 
 			while(true)
 			{
@@ -120,7 +122,7 @@ namespace ElementsExplorer.Controllers
 				if(changes.UnconfirmedHash == unconfirmedHash)
 					changes.Unconfirmed = new UTXOChange();
 
-				if(noWait || changes.HasChange || !(await WaitingTransaction(extPubKey)))
+				if(changes.HasChange || !(await waitingTransaction))
 					break;
 			}
 

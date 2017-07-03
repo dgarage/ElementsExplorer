@@ -108,9 +108,11 @@ namespace ElementsExplorer.Tests
 			{
 				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
 				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
-				tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
+				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
 				var utxo = tester.Client.Sync(key.Neuter(), null, null);
 				Assert.True(utxo.Reset);
+				if(utxo.Unconfirmed.UTXOs.Count == 0)
+					Console.WriteLine();
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 
 

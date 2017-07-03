@@ -67,6 +67,8 @@ namespace ElementsExplorer
 				Chain = node.GetChain();
 			}
 			_Nodes = CreateNodeGroup(Chain);
+			while(_Nodes.ConnectedNodes.Count == 0)
+				Thread.Sleep(10);
 		}
 
 		public Repository Repository
