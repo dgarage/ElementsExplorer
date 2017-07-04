@@ -74,16 +74,7 @@ namespace ElementsExplorer.Controllers
 					{
 						continue;
 					}
-
-					if(transaction.BlockHash != null)
-					{
-						if(height > highestHeight)
-						{
-							changes.BlockHash = transaction.BlockHash;
-							highestHeight = height;
-						}
-					}
-
+					
 					if(transaction.BlockHash == null)
 					{
 						if(changes.Unconfirmed.HasConflict(transaction.Transaction) ||
@@ -96,6 +87,11 @@ namespace ElementsExplorer.Controllers
 					}
 					else
 					{
+						if(height > highestHeight)
+						{
+							changes.BlockHash = transaction.BlockHash;
+							highestHeight = height;
+						}
 						if(changes.Confirmed.HasConflict(transaction.Transaction))
 						{
 							Logs.Explorer.LogError("A conflict among confirmed transaction happened, this should be impossible");
