@@ -10,16 +10,16 @@ namespace ElementsExplorer
 {
 	public class UTXOChanges : IBitcoinSerializable
 	{
-		byte _IsDiff;
+		byte _Reset;
 		public bool Reset
 		{
 			get
 			{
-				return _IsDiff == 0;
+				return _Reset == 1;
 			}
 			set
 			{
-				_IsDiff = (byte)(value ? 0 : 1);
+				_Reset = (byte)(value ? 1 : 0);
 			}
 		}
 
@@ -52,7 +52,7 @@ namespace ElementsExplorer
 
 		public void ReadWrite(BitcoinStream stream)
 		{
-			stream.ReadWrite(ref _IsDiff);
+			stream.ReadWrite(ref _Reset);
 			stream.ReadWrite(ref _BlockHash);
 			stream.ReadWrite(ref _UnconfirmedHash);
 			stream.ReadWrite(ref _Unconfirmed);
