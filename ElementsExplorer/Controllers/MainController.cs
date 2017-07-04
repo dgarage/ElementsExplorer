@@ -49,7 +49,7 @@ namespace ElementsExplorer.Controllers
 			UTXOChanges changes = null;
 			UTXOChanges previousChanges = null;
 			List<TrackedTransaction> cleanList = null;
-			var getKeyPath = GetKeyPaths(extPubKey);			
+			var getKeyPath = GetKeyPaths(extPubKey);
 
 			while(true)
 			{
@@ -57,7 +57,7 @@ namespace ElementsExplorer.Controllers
 				changes = new UTXOChanges();
 				var transactions = Runtime.Repository.GetTransactions(extPubKey);
 
-				
+
 				transactions = transactions
 								.Where(t => GetHeight(t.BlockHash) != OrphanHeight)
 								.TopologicalSort(t =>
@@ -66,17 +66,23 @@ namespace ElementsExplorer.Controllers
 									return transactions.Where(u => dependsOn.Contains(u.Transaction.GetHash()));
 								}).ToArray();
 
+				int highestHeight = 0;
 				foreach(var transaction in transactions)
 				{
 					int height = GetHeight(transaction.BlockHash);
 					if(height == OrphanHeight)
 					{
-						//cleanList.Add(transaction);
 						continue;
 					}
 
 					if(transaction.BlockHash != null)
-						changes.BlockHash = transaction.BlockHash;
+					{
+						if(height > highestHeight)
+						{
+							changes.BlockHash = transaction.BlockHash;
+							highestHeight = height;
+						}
+					}
 
 					if(transaction.BlockHash == null)
 					{
