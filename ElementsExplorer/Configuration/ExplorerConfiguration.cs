@@ -39,6 +39,11 @@ namespace ElementsExplorer.Configuration
 			set;
 		}
 
+		public bool Rescan
+		{
+			get; set;
+		}
+
 		public ExplorerConfiguration LoadArgs(String[] args)
 		{
 			ConfigurationFile = args.Where(a => a.StartsWith("-conf=", StringComparison.Ordinal)).Select(a => a.Substring("-conf=".Length).Replace("\"", "")).FirstOrDefault();
@@ -84,7 +89,7 @@ namespace ElementsExplorer.Configuration
 			var config = TextFileConfiguration.Parse(File.ReadAllText(ConfigurationFile));
 			consoleConfig.MergeInto(config, true);
 
-
+			Rescan = config.GetOrDefault<bool>("rescan", false);
 			var defaultPort = config.GetOrDefault<int>("port", 37123);
 			Listen = config
 						.GetAll("bind")

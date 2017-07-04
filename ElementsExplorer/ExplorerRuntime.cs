@@ -54,6 +54,11 @@ namespace ElementsExplorer
 
 			var dbPath = Path.Combine(configuration.DataDir, "db");
 			Repository = new Repository(dbPath, true);
+			if(configuration.Rescan)
+			{
+				Logs.Configuration.LogInformation("Rescanning...");
+				Repository.SetIndexProgress(null);
+			}
 			Chain = new ConcurrentChain(Network.GetGenesis().Header);			
 		}
 
