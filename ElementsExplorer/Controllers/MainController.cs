@@ -57,23 +57,16 @@ namespace ElementsExplorer.Controllers
 				changes = new UTXOChanges();
 				var transactions = Runtime.Repository.GetTransactions(extPubKey);
 
-				var unconfirmed = transactions
-									.Where(t => GetHeight(t.BlockHash) == MempoolHeight)
-									.ToArray();
-				unconfirmed = unconfirmed
+				
+				transactions = transactions
+								.Where(t => GetHeight(t.BlockHash) != OrphanHeight)
 								.TopologicalSort(t =>
 								{
 									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
-									return unconfirmed.Where(u => dependsOn.Contains(u.Transaction.GetHash()));
+									return transactions.Where(u => dependsOn.Contains(u.Transaction.GetHash()));
 								}).ToArray();
 
-				var confirmed = transactions
-					.OrderBy(t => GetHeight(t.BlockHash))
-					.Where(t => t.BlockHash != null)
-					.ToArray();
-
-
-				foreach(var transaction in confirmed.Concat(unconfirmed))
+				foreach(var transaction in transactions)
 				{
 					int height = GetHeight(transaction.BlockHash);
 					if(height == OrphanHeight)
