@@ -75,7 +75,6 @@ namespace ElementsExplorer.Controllers
 																	((u.Height < t.Height))); //Depends on earlier transaction
 								}).ToList();
 
-				int highestHeight = 0;
 				foreach(var item in transactions)
 				{
 					var record = item.Record;
@@ -91,11 +90,6 @@ namespace ElementsExplorer.Controllers
 					}
 					else
 					{
-						if(item.Height > highestHeight)
-						{
-							changes.BlockHash = record.BlockHash;
-							highestHeight = item.Height;
-						}
 						if(changes.Confirmed.HasConflict(record.Transaction))
 						{
 							Logs.Explorer.LogError("A conflict among confirmed transaction happened, this should be impossible");
@@ -103,6 +97,7 @@ namespace ElementsExplorer.Controllers
 						}
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
 						changes.Confirmed.LoadChanges(record.Transaction, getKeyPath);
+						changes.BlockHash = record.BlockHash;
 						if(record.BlockHash == lastBlockHash)
 							previousChanges = changes.Clone();
 					}
@@ -118,7 +113,7 @@ namespace ElementsExplorer.Controllers
 				if(changes.UnconfirmedHash == unconfirmedHash)
 					changes.Unconfirmed = new UTXOChange();
 
-				if(changes.HasChange || !(await waitingTransaction))
+				if(changes.HasChanges || !(await waitingTransaction))
 					break;
 				waitingTransaction = Task.FromResult(false); //next time, will not wait
 			}

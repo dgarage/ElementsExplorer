@@ -86,7 +86,7 @@ namespace ElementsExplorer
 			}
 		}
 
-		public bool HasChange
+		public bool HasChanges
 		{
 			get
 			{

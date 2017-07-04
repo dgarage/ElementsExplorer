@@ -205,7 +205,7 @@ namespace ElementsExplorer.Tests
 
 
 				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash, true);
-				Assert.True(!utxo.HasChange);
+				Assert.True(!utxo.HasChanges);
 
 				var before01Spend = utxo.BlockHash;
 
@@ -218,18 +218,19 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(new KeyPath("0/3"), utxo.Unconfirmed.UTXOs[0].KeyPath);
 				Assert.Equal(1, utxo.Unconfirmed.SpentOutpoints.Count);
 
-				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
-				Assert.True(!utxo.HasChange);
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash, true);
+				Assert.False(utxo.HasChanges);
 				tester.Runtime.RPC.Generate(1);
 
 				utxo = tester.Client.Sync(key.Neuter(), before01Spend, utxo.UnconfirmedHash);
-				Assert.True(!utxo.Unconfirmed.HasChanges);
-				if(utxo.Confirmed.UTXOs.Count == 0)
-					Console.WriteLine();
+				Assert.False(utxo.Unconfirmed.HasChanges);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/3"), utxo.Confirmed.UTXOs[0].KeyPath);
 				Assert.Equal(1, utxo.Confirmed.SpentOutpoints.Count);
 				Assert.Equal(outpoint01, utxo.Confirmed.SpentOutpoints[0]);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash, true);
+				Assert.False(utxo.HasChanges);
 			}
 		}
 
