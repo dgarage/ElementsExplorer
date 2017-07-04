@@ -55,53 +55,54 @@ namespace ElementsExplorer.Controllers
 			{
 				cleanList = new List<TrackedTransaction>();
 				changes = new UTXOChanges();
-				var transactions = Runtime.Repository.GetTransactions(extPubKey);
+				var transactions = Runtime.Repository
+										.GetTransactions(extPubKey)
+										.Select(t =>
+										new
+										{
+											Height = GetHeight(t.BlockHash),
+											Record = t
+										}).Where(u => u.Height != OrphanHeight).ToArray();
 
 
 				transactions = transactions
-								.Where(t => GetHeight(t.BlockHash) != OrphanHeight)
 								.TopologicalSort(t =>
 								{
-									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
-									return transactions.Where(u => dependsOn.Contains(u.Transaction.GetHash()));
+									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Record.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
+									return transactions.Where(u => dependsOn.Contains(u.Record.Transaction.GetHash()));
 								}).ToArray();
 
 				int highestHeight = 0;
-				foreach(var transaction in transactions)
+				foreach(var item in transactions)
 				{
-					int height = GetHeight(transaction.BlockHash);
-					if(height == OrphanHeight)
+					var record = item.Record;
+					if(record.BlockHash == null)
 					{
-						continue;
-					}
-					
-					if(transaction.BlockHash == null)
-					{
-						if(changes.Unconfirmed.HasConflict(transaction.Transaction) ||
-							changes.Confirmed.HasConflict(transaction.Transaction))
+						if(changes.Unconfirmed.HasConflict(record.Transaction) ||
+							changes.Confirmed.HasConflict(record.Transaction))
 						{
-							cleanList.Add(transaction);
+							cleanList.Add(record);
 							continue;
 						}
-						changes.Unconfirmed.LoadChanges(transaction.Transaction, getKeyPath);
+						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
 					}
 					else
 					{
-						if(height > highestHeight)
+						if(item.Height > highestHeight)
 						{
-							changes.BlockHash = transaction.BlockHash;
-							highestHeight = height;
+							changes.BlockHash = record.BlockHash;
+							highestHeight = item.Height;
 						}
-						if(changes.Confirmed.HasConflict(transaction.Transaction))
+						if(changes.Confirmed.HasConflict(record.Transaction))
 						{
 							Logs.Explorer.LogError("A conflict among confirmed transaction happened, this should be impossible");
 							throw new InvalidOperationException("The impossible happened");
 						}
-						changes.Unconfirmed.LoadChanges(transaction.Transaction, getKeyPath);
-						changes.Confirmed.LoadChanges(transaction.Transaction, getKeyPath);
+						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
+						changes.Confirmed.LoadChanges(record.Transaction, getKeyPath);
 					}
 
-					if(transaction.BlockHash == lastBlockHash)
+					if(record.BlockHash == lastBlockHash)
 						previousChanges = changes.Clone();
 				}
 
