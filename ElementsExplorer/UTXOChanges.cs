@@ -146,14 +146,10 @@ namespace ElementsExplorer
 
 			
 			var existingUTXOs = new HashSet<OutPoint>(UTXOs.Select(u => u.Outpoint));
-			var spentOutpoints = new HashSet<OutPoint>(SpentOutpoints);
 
 			foreach(var input in tx.Inputs)
 			{
-				if(existingUTXOs.Remove(input.PrevOut))
-				{
-					SpentOutpoints.Add(input.PrevOut);
-				}
+				existingUTXOs.Remove(input.PrevOut);
 			}
 
 			int index = -1;

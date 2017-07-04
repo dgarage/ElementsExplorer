@@ -122,12 +122,11 @@ namespace ElementsExplorer.Tests
 				LockTestCoins(tester.Runtime.RPC);
 				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(alice, "0/1"));
 				tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/3"), Money.Coins(0.6m));
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice.BlockHash, utxoAlice.UnconfirmedHash);
 
 				tester.Runtime.RPC.Generate(1);
 
-				var before = utxoAlice;
-				utxoAlice = tester.Client.Sync(alice.Neuter(), before.BlockHash, before.UnconfirmedHash);
-
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice.BlockHash, utxoAlice.UnconfirmedHash);
 				Assert.Equal(1, utxoAlice.Confirmed.SpentOutpoints.Count);
 				Assert.Equal(0, utxoAlice.Confirmed.UTXOs.Count);
 

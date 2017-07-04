@@ -105,10 +105,8 @@ namespace ElementsExplorer.Controllers
 
 				changes.Reset = previousChanges == null;
 				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
-				if(previousChanges != null)
-				{
-					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);
-				}
+				if(!changes.Reset)
+					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);				
 				changes.UnconfirmedHash = changes.Unconfirmed.GetHash();
 				if(changes.UnconfirmedHash == unconfirmedHash)
 					changes.Unconfirmed = new UTXOChange();
