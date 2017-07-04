@@ -99,7 +99,33 @@ namespace ElementsExplorer.Tests
 			keyInfo = tester.Repository.GetKeyInformation(pubKey.Derive(new KeyPath("1/27")).PubKey.Hash.ScriptPubKey);
 			Assert.Null(keyInfo);
 		}
+		[Fact]
+		public void CanTrack3()
+		{
+			using(var tester = ServerTester.Create())
+			{
+				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
+				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
+				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
+				id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/1"), Money.Coins(1.1m));
+				id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/2"), Money.Coins(1.2m));
 
+				UTXOChanges utxo = null;
+
+				while(utxo == null || utxo.Unconfirmed.UTXOs.Count != 3)
+				{
+					utxo = tester.Client.Sync(key.Neuter(), null, null);
+				}
+
+				tester.Runtime.RPC.Generate(1);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash);
+				Assert.True(utxo.HasChanges);
+				Assert.Equal(3, utxo.Confirmed.UTXOs.Count);
+				utxo = tester.Client.Sync(key.Neuter(), utxo.BlockHash, utxo.UnconfirmedHash, true);
+				Assert.False(utxo.HasChanges);
+			}
+		}
 
 		[Fact]
 		public void CanTrack2()
@@ -111,8 +137,6 @@ namespace ElementsExplorer.Tests
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
 				var utxo = tester.Client.Sync(key.Neuter(), null, null);
 				Assert.True(utxo.Reset);
-				if(utxo.Unconfirmed.UTXOs.Count == 0)
-					Console.WriteLine();
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 
 

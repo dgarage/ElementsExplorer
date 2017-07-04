@@ -171,17 +171,19 @@ namespace ElementsExplorer
 				Download o;
 				if(_InFlights.TryRemove(block.Object.GetHash(), out o))
 				{
+					HashSet<ExtPubKey> pubKeys = new HashSet<ExtPubKey>();
 					foreach(var tx in block.Object.Transactions)
 					{
-						var pubKeys = GetInterestedWallet(tx);
-						foreach(var pubkey in pubKeys)
+						var pubKeys2 = GetInterestedWallet(tx);
+						foreach(var pubkey in pubKeys2)
 						{
+							pubKeys.Add(pubkey);
 							Runtime.Repository.AddTransaction(pubkey, block.Object.GetHash(), tx);
 						}
-						foreach(var pubkey in pubKeys)
-						{
-							Notify(pubkey, false);
-						}
+					}
+					foreach(var pubkey in pubKeys)
+					{
+						Notify(pubkey, false);
 					}
 					var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
 					if(blockHeader != null)
@@ -231,7 +233,6 @@ namespace ElementsExplorer
 		private HashSet<ExtPubKey> GetInterestedWallet(Transaction tx)
 		{
 			var pubKeys = new HashSet<ExtPubKey>();
-			var added = new HashSet<uint160>();
 			tx.CacheHashes();
 			foreach(var input in tx.Inputs)
 			{
@@ -239,7 +240,7 @@ namespace ElementsExplorer
 				if(signer != null)
 				{
 					var keyInfo = Runtime.Repository.GetKeyInformation(signer.ScriptPubKey);
-					if(keyInfo != null && added.Add(Hashes.Hash160(keyInfo.RootKey)))
+					if(keyInfo != null)
 						pubKeys.Add(new ExtPubKey(keyInfo.RootKey));
 				}
 			}
