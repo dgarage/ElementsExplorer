@@ -57,8 +57,6 @@ namespace ElementsExplorer.Controllers
 				changes = new UTXOChanges();
 				var transactions = Runtime.Repository.GetTransactions(extPubKey);
 
-				var lastBlock = Runtime.Chain.GetBlock(lastBlockHash);
-
 				var unconfirmed = transactions
 									.Where(t => GetHeight(t.BlockHash) == MempoolHeight)
 									.ToArray();
@@ -80,7 +78,7 @@ namespace ElementsExplorer.Controllers
 					int height = GetHeight(transaction.BlockHash);
 					if(height == OrphanHeight)
 					{
-						cleanList.Add(transaction);
+						//cleanList.Add(transaction);
 						continue;
 					}
 
