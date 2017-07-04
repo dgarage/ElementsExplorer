@@ -97,11 +97,15 @@ namespace ElementsExplorer
 				tx.Commit();
 			}
 		}
-		public KeyInformation GetKeyInformation(Script script)
-		{
-			return GetKeyInformation(null, script);
-		}
+
 		public KeyInformation GetKeyInformation(ExtPubKey pubKey, Script script)
+		{
+			var info = GetKeyInformation(script);
+			if(info == null || !pubKey.ToBytes().SequenceEqual(info.RootKey))
+				return null;
+			return info;
+		}
+		public KeyInformation GetKeyInformation(Script script)
 		{
 			if(Caching)
 			{
@@ -116,7 +120,7 @@ namespace ElementsExplorer
 				if(existingRow == null || !existingRow.Exists)
 					return null;
 				var keyInfo = Serializer.ToObject<KeyInformation>(Unzip(existingRow.Value));
-				return (pubKey == null || keyInfo.RootKey.SequenceEqual(pubKey.ToBytes())) ? keyInfo : null;
+				return keyInfo;
 			}
 		}
 
