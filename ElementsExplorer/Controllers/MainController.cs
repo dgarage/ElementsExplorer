@@ -62,15 +62,18 @@ namespace ElementsExplorer.Controllers
 										{
 											Height = GetHeight(t.BlockHash),
 											Record = t
-										}).Where(u => u.Height != OrphanHeight).ToArray();
+										})
+										.Where(u => u.Height != OrphanHeight)
+										.ToList();
 
 
 				transactions = transactions
 								.TopologicalSort(t =>
 								{
 									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Record.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
-									return transactions.Where(u => dependsOn.Contains(u.Record.Transaction.GetHash()));
-								}).ToArray();
+									return transactions.Where(u => dependsOn.Contains(u.Record.Transaction.GetHash()) ||  //Depends on parent transaction
+																	((u.Height < t.Height))); //Depends on earlier transaction
+								}).ToList();
 
 				int highestHeight = 0;
 				foreach(var item in transactions)
@@ -100,10 +103,9 @@ namespace ElementsExplorer.Controllers
 						}
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
 						changes.Confirmed.LoadChanges(record.Transaction, getKeyPath);
+						if(record.BlockHash == lastBlockHash)
+							previousChanges = changes.Clone();
 					}
-
-					if(record.BlockHash == lastBlockHash)
-						previousChanges = changes.Clone();
 				}
 
 				changes.Reset = previousChanges == null;
@@ -118,6 +120,7 @@ namespace ElementsExplorer.Controllers
 
 				if(changes.HasChange || !(await waitingTransaction))
 					break;
+				waitingTransaction = Task.FromResult(false); //next time, will not wait
 			}
 
 			Runtime.Repository.CleanTransactions(extPubKey.ExtPubKey, cleanList);

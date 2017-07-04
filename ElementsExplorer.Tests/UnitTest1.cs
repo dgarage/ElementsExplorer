@@ -224,6 +224,8 @@ namespace ElementsExplorer.Tests
 
 				utxo = tester.Client.Sync(key.Neuter(), before01Spend, utxo.UnconfirmedHash);
 				Assert.True(!utxo.Unconfirmed.HasChanges);
+				if(utxo.Confirmed.UTXOs.Count == 0)
+					Console.WriteLine();
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/3"), utxo.Confirmed.UTXOs[0].KeyPath);
 				Assert.Equal(1, utxo.Confirmed.SpentOutpoints.Count);

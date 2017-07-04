@@ -222,6 +222,7 @@ namespace ElementsExplorer
 					if(row == null || !row.Exists)
 						continue;
 					var transaction = new Transaction(row.Value);
+					transaction.CacheHashes();
 					var blockHash = row.Key.Split(':')[1];
 					var tracked = new TrackedTransaction();
 					if(blockHash.Length != 0)
