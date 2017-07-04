@@ -48,6 +48,33 @@ namespace ElementsExplorer
 			get; set;
 		}
 	}
+
+	public class RepositoryTransaction : IDisposable
+	{
+		DBreeze.Transactions.Transaction _Transaction;
+		public RepositoryTransaction(DBreeze.Transactions.Transaction transaction)
+		{
+			if(transaction == null)
+				throw new ArgumentNullException("transaction");
+			_Transaction = transaction;
+		}
+
+		public void InsertTransaction(ExtPubKey pubkey, uint256 blockHash, Transaction transaction)
+		{
+			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
+			_Transaction.Insert(tableName, Repository.GetTransactionRowName(blockHash, transaction), transaction.ToBytes());
+		}
+
+		public void Commit()
+		{
+			_Transaction.Commit();
+		}
+		public void Dispose()
+		{
+			_Transaction.Dispose();
+		}
+	}
+
 	public class Repository : IDisposable
 	{
 		DBreezeEngine _Engine;
@@ -238,17 +265,12 @@ namespace ElementsExplorer
 			return result.ToArray();
 		}
 
-		public void AddTransaction(ExtPubKey pubkey, uint256 blockHash, Transaction transaction)
+		public RepositoryTransaction CreateTransaction()
 		{
-			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
-			using(var tx = _Engine.GetTransaction())
-			{
-				tx.Insert(tableName, GetTransactionRowName(blockHash, transaction), transaction.ToBytes());
-				tx.Commit();
-			}
+			return new RepositoryTransaction(_Engine.GetTransaction());
 		}
 
-		private static string GetTransactionRowName(uint256 blockHash, Transaction transaction)
+		internal static string GetTransactionRowName(uint256 blockHash, Transaction transaction)
 		{
 			return $"{transaction.GetHash()}:{blockHash}";
 		}

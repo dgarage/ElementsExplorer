@@ -172,24 +172,28 @@ namespace ElementsExplorer
 				if(_InFlights.TryRemove(block.Object.GetHash(), out o))
 				{
 					HashSet<ExtPubKey> pubKeys = new HashSet<ExtPubKey>();
-					foreach(var tx in block.Object.Transactions)
+					using(var db = Runtime.Repository.CreateTransaction())
 					{
-						var pubKeys2 = GetInterestedWallet(tx);
-						foreach(var pubkey in pubKeys2)
+						foreach(var tx in block.Object.Transactions)
 						{
-							pubKeys.Add(pubkey);
-							Runtime.Repository.AddTransaction(pubkey, block.Object.GetHash(), tx);
+							var pubKeys2 = GetInterestedWallet(tx);
+							foreach(var pubkey in pubKeys2)
+							{
+								pubKeys.Add(pubkey);
+								db.InsertTransaction(pubkey, block.Object.GetHash(), tx);
+							}
 						}
+						var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
+						if(blockHeader != null)
+						{
+							_CurrentLocation = blockHeader.GetLocator();
+							Logs.Explorer.LogInformation($"Processed block {block.Object.GetHash()}");
+						}
+						db.Commit();
 					}
 					foreach(var pubkey in pubKeys)
 					{
 						Notify(pubkey, false);
-					}
-					var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
-					if(blockHeader != null)
-					{
-						_CurrentLocation = blockHeader.GetLocator();
-						Logs.Explorer.LogInformation($"Processed block {block.Object.GetHash()}");
 					}
 				}
 				if(_InFlights.Count == 0)
@@ -199,11 +203,14 @@ namespace ElementsExplorer
 			message.Message.IfPayloadIs<TxPayload>(txPayload =>
 			{
 				var pubKeys = GetInterestedWallet(txPayload.Object);
-				foreach(var pubkey in pubKeys)
+				using(var db = Runtime.Repository.CreateTransaction())
 				{
-					Runtime.Repository.AddTransaction(pubkey, null, txPayload.Object);
+					foreach(var pubkey in pubKeys)
+					{
+						db.InsertTransaction(pubkey, null, txPayload.Object);
+					}
+					db.Commit();
 				}
-
 				foreach(var pubkey in pubKeys)
 				{
 					Notify(pubkey, true);
