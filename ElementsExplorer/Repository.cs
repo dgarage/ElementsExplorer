@@ -97,8 +97,11 @@ namespace ElementsExplorer
 				tx.Commit();
 			}
 		}
-
 		public KeyInformation GetKeyInformation(Script script)
+		{
+			return GetKeyInformation(null, script);
+		}
+		public KeyInformation GetKeyInformation(ExtPubKey pubKey, Script script)
 		{
 			if(Caching)
 			{
@@ -112,7 +115,8 @@ namespace ElementsExplorer
 				var existingRow = tx.Select<string, byte[]>("KeysByScript", script.Hash.ToString());
 				if(existingRow == null || !existingRow.Exists)
 					return null;
-				return Serializer.ToObject<KeyInformation>(Unzip(existingRow.Value));
+				var keyInfo = Serializer.ToObject<KeyInformation>(Unzip(existingRow.Value));
+				return (pubKey == null || keyInfo.RootKey.SequenceEqual(pubKey.ToBytes())) ? keyInfo : null;
 			}
 		}
 

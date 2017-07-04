@@ -154,7 +154,7 @@ namespace ElementsExplorer.Controllers
 		{
 			return (script) =>
 			{
-				return Runtime.Repository.GetKeyInformation(script)?.KeyPath;
+				return Runtime.Repository.GetKeyInformation(extPubKey.ExtPubKey, script)?.KeyPath;
 			};
 		}
 
