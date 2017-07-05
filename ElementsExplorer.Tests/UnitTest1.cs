@@ -110,28 +110,33 @@ namespace ElementsExplorer.Tests
 			{
 				var bob = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
 				var alice = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
-				tester.Client.Sync(bob.Neuter(), null, null, true); //Track things do not wait
-				tester.Client.Sync(alice.Neuter(), null, null, true); //Track things do not wait
+				var utxoAlice = tester.Client.Sync(alice.Neuter(), null, null, true); //Track things do not wait
+				var utxoBob = tester.Client.Sync(bob.Neuter(), null, null, true); //Track things do not wait
+
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(alice, "0/1"), Money.Coins(1.0m));
-				id = tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/2"), Money.Coins(1.0m));
+				id = tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/2"), Money.Coins(0.1m));
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
+				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
 
 				tester.Runtime.RPC.Generate(1);
 
-				var utxoAlice = tester.Client.Sync(alice.Neuter(), null, null);
-				var utxoBob = tester.Client.Sync(bob.Neuter(), null, null);
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
+				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
 
 				LockTestCoins(tester.Runtime.RPC);
 				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(alice, "0/1"));
 				tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/3"), Money.Coins(0.6m));
-				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
-
-				tester.Runtime.RPC.Generate(1);
 
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
+				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+
+				var ll = tester.Runtime.RPC.Generate(1);
+
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
+				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+
 				Assert.Equal(1, utxoAlice.Confirmed.SpentOutpoints.Count);
 				Assert.Equal(0, utxoAlice.Confirmed.UTXOs.Count);
-
-				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
 
 				Assert.Equal(0, utxoBob.Confirmed.SpentOutpoints.Count);
 				Assert.Equal(1, utxoBob.Confirmed.UTXOs.Count);
