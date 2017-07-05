@@ -159,6 +159,7 @@ namespace ElementsExplorer.Tests
 				id = tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/2"), Money.Coins(0.1m));
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
 				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+				Assert.True(utxoAlice.Unconfirmed.Reset);
 
 				tester.Runtime.RPC.Generate(1);
 
@@ -172,6 +173,10 @@ namespace ElementsExplorer.Tests
 				
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
 				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+				Assert.True(utxoAlice.Unconfirmed.Reset);
+
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice, true);
+				Assert.False(utxoAlice.Unconfirmed.Reset);
 
 				tester.Runtime.RPC.Generate(1);
 
