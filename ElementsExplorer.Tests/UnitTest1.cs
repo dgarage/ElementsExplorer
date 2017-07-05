@@ -153,6 +153,7 @@ namespace ElementsExplorer.Tests
 				var alice = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
 				var utxoAlice = tester.Client.Sync(alice.Neuter(), null, null, true); //Track things do not wait
 				var utxoBob = tester.Client.Sync(bob.Neuter(), null, null, true); //Track things do not wait
+				Assert.True(utxoAlice.Confirmed.Reset);
 
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(alice, "0/1"), Money.Coins(1.0m));
 				id = tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/2"), Money.Coins(0.1m));
@@ -163,19 +164,21 @@ namespace ElementsExplorer.Tests
 
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
 				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+				Assert.True(utxoAlice.Confirmed.Reset);
 
 				LockTestCoins(tester.Runtime.RPC);
 				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(alice, "0/1"));
 				tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/3"), Money.Coins(0.6m));
+				
+				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
+				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
+
+				tester.Runtime.RPC.Generate(1);
 
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
 				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
 
-				var ll = tester.Runtime.RPC.Generate(1);
-
-				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
-				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
-
+				Assert.False(utxoAlice.Confirmed.Reset);
 				Assert.Equal(1, utxoAlice.Confirmed.SpentOutpoints.Count);
 				Assert.Equal(0, utxoAlice.Confirmed.UTXOs.Count);
 

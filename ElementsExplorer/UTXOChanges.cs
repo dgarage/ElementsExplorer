@@ -204,6 +204,7 @@ namespace ElementsExplorer
 
 		internal void Clear()
 		{
+			Reset = false;
 			UTXOs.Clear();
 			SpentOutpoints.Clear();
 		}
