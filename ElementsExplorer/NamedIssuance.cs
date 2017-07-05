@@ -28,12 +28,17 @@ namespace ElementsExplorer
 			if(assetId == null)
 				return null;
 
-			var name = tx.Outputs
-							.Select(txout => TxNullDataTemplate.Instance.ExtractScriptPubKeyParameters(txout.ScriptPubKey))
-							.Where(data => data != null && data.Length == 1)
-							.Select(data => Encoding.UTF8.GetString(data.First()))
-							.FirstOrDefault();
-			return new NamedIssuance() { Name = name, AssetId = assetId };
+			try
+			{
+
+				var name = tx.Outputs
+								.Select(txout => TxNullDataTemplate.Instance.ExtractScriptPubKeyParameters(txout.ScriptPubKey))
+								.Where(data => data != null && data.Length == 1)
+								.Select(data => Encoding.UTF8.GetString(data.First()))
+								.FirstOrDefault();
+				return new NamedIssuance() { Name = name, AssetId = assetId };
+			}
+			catch { return null; }
 		}
     }
 }

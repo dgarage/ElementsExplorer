@@ -8,6 +8,7 @@ using Xunit;
 using Xunit.Abstractions;
 using NBitcoin.RPC;
 using System.Text;
+using NBitcoin.Crypto;
 
 namespace ElementsExplorer.Tests
 {
@@ -16,6 +17,28 @@ namespace ElementsExplorer.Tests
 		public UnitTest1(ITestOutputHelper output)
 		{
 			Logs.Configure(new TestOutputHelperFactory(output));
+		}
+
+
+		[Fact]
+		public void CanSetAssetName()
+		{
+			using(var tester = RepositoryTester.Create(true))
+			{
+				var assetId = Hashes.Hash256(RandomUtils.GetBytes(32));
+				var assetId2 = Hashes.Hash256(RandomUtils.GetBytes(32));
+				var result = tester.Repository.SetAssetName(new NamedIssuance() { AssetId = assetId, Name = "hello" });
+				Assert.Equal(Repository.SetNameResult.Success, result);
+
+				result = tester.Repository.SetAssetName(new NamedIssuance() { AssetId = assetId, Name = "hello2" });
+				Assert.Equal(Repository.SetNameResult.AssetIdAlreadyClaimedAName, result);
+
+				result = tester.Repository.SetAssetName(new NamedIssuance() { AssetId = assetId2, Name = "hello" });
+				Assert.Equal(Repository.SetNameResult.AssetNameAlreadyExist, result);
+
+				Assert.Null(tester.Repository.GetAssetName(assetId2));
+				Assert.Equal("hello", tester.Repository.GetAssetName(assetId));
+			}
 		}
 
 		[Fact]
@@ -101,6 +124,24 @@ namespace ElementsExplorer.Tests
 			Assert.Null(keyInfo);
 		}
 
+
+		[Fact]
+		public void CanGetAssetName()
+		{
+			using(var tester = ServerTester.Create())
+			{
+				var assetIssuance = tester.Runtime.RPC.IssueAsset(10, 10, true, "hello");
+				Thread.Sleep(500);
+				Assert.Equal("hello", tester.Client.GetAssetName(assetIssuance.AssetType));
+				Assert.Equal("", tester.Client.GetAssetName(uint256.Zero));
+
+				//Can't claim a name already claimed
+				var assetIssuance2 = tester.Runtime.RPC.IssueAsset(10, 10, true, "hello");
+				Thread.Sleep(500);
+				Assert.Equal("hello", tester.Client.GetAssetName(assetIssuance.AssetType));
+				Assert.Equal("", tester.Client.GetAssetName(assetIssuance2.AssetType));
+			}
+		}
 
 
 		[Fact]

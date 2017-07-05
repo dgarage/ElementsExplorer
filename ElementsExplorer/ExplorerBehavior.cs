@@ -190,6 +190,9 @@ namespace ElementsExplorer
 							Logs.Explorer.LogInformation($"Processed block {block.Object.GetHash()}");
 						}
 						db.Commit();
+
+						foreach(var tx in block.Object.Transactions)
+							ScanForAssetName(tx);
 					}
 					foreach(var pubkey in pubKeys)
 					{
@@ -211,12 +214,26 @@ namespace ElementsExplorer
 					}
 					db.Commit();
 				}
+				ScanForAssetName(txPayload.Object);
 				foreach(var pubkey in pubKeys)
 				{
 					Notify(pubkey, true);
 				}
 			});
 
+		}
+
+		private void ScanForAssetName(Transaction tx)
+		{
+			var name = NamedIssuance.Extract(tx);
+			if(name != null)
+			{
+				var result = Runtime.Repository.SetAssetName(name);
+				if(result == Repository.SetNameResult.Success)
+					Logs.Explorer.LogInformation($"Name {name.Name} claimed by {name.AssetId}");
+				else
+					Logs.Explorer.LogInformation($"Name {name.Name} failed to be claimed by {name.AssetId}, cause: {result}");
+			}
 		}
 
 		private void Notify(ExtPubKey pubkey, bool log)
