@@ -13,8 +13,8 @@ namespace ElementsExplorer
 	{
 		public void ReadWrite(BitcoinStream stream)
 		{
-			stream.ReadWrite(ref _Unconfirmed);
 			stream.ReadWrite(ref _Confirmed);
+			stream.ReadWrite(ref _Unconfirmed);
 		}
 
 		UTXOChange _Unconfirmed = new UTXOChange();
