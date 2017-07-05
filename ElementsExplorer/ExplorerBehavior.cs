@@ -139,6 +139,7 @@ namespace ElementsExplorer
 		{
 			AttachedNode.StateChanged -= AttachedNode_StateChanged;
 			AttachedNode.MessageReceived -= AttachedNode_MessageReceived;
+
 			_Timer.Dispose();
 			_Timer = null;
 		}
@@ -172,11 +173,17 @@ namespace ElementsExplorer
 				if(_InFlights.TryRemove(block.Object.GetHash(), out o))
 				{
 					HashSet<ExtPubKey> pubKeys = new HashSet<ExtPubKey>();
+					foreach(var tx in block.Object.Transactions)
+						tx.CacheHashes();
+
+					var interestedWalletsByTxId = block.Object
+													.Transactions
+													.ToDictionary(t => t.GetHash(), t => GetInterestedWallets(t));
 					using(var db = Runtime.Repository.CreateTransaction())
 					{
 						foreach(var tx in block.Object.Transactions)
 						{
-							var pubKeys2 = GetInterestedWallets(tx);
+							var pubKeys2 = interestedWalletsByTxId[tx.GetHash()];
 							foreach(var pubkey in pubKeys2)
 							{
 								pubKeys.Add(pubkey);

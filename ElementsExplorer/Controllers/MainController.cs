@@ -52,6 +52,7 @@ namespace ElementsExplorer.Controllers
 			bool noWait = false)
 		{
 			lastBlockHash = lastBlockHash ?? uint256.Zero;
+			var actualLastBlockHash = uint256.Zero;
 
 			var waitingTransaction = noWait ? Task.FromResult(false) : WaitingTransaction(extPubKey);
 
@@ -108,19 +109,30 @@ namespace ElementsExplorer.Controllers
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
 						changes.Confirmed.LoadChanges(record.Transaction, getKeyPath);
 						changes.Confirmed.Hash = record.BlockHash;
+						actualLastBlockHash = record.BlockHash;
 						if(record.BlockHash == lastBlockHash)
 							previousChanges = changes.Clone();
 					}
 				}
 
-				changes.Confirmed.Reset = previousChanges == null;
-				changes.Unconfirmed.Reset = true;
-				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
-				if(!changes.Confirmed.Reset)
-					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);				
 				changes.Unconfirmed.Hash = changes.Unconfirmed.GetHash();
 				if(changes.Unconfirmed.Hash == unconfirmedHash)
 					changes.Unconfirmed.Clear();
+				else
+				{
+					changes.Unconfirmed.Reset = true;
+					changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
+				}
+
+				if(actualLastBlockHash == lastBlockHash)
+					changes.Confirmed.Clear();
+				else if(previousChanges != null)
+				{
+					changes.Confirmed.Reset = false;
+					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);
+				}
+				else
+					changes.Confirmed.Reset = true;
 
 				if(changes.HasChanges || !(await waitingTransaction))
 					break;

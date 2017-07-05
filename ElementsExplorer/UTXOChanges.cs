@@ -111,7 +111,7 @@ namespace ElementsExplorer
 		{
 			get
 			{
-				return UTXOs.Count != 0 || SpentOutpoints.Count != 0;
+				return Reset || UTXOs.Count != 0 || SpentOutpoints.Count != 0;
 			}
 		}
 
@@ -190,7 +190,7 @@ namespace ElementsExplorer
 
 			var diff = new UTXOChange();
 			diff.Hash = this.Hash;
-			diff.Reset = this.Reset;
+			diff.Reset = Reset;
 			foreach(var deleted in deletedUTXOs)
 			{
 				diff.SpentOutpoints.Add(deleted.Outpoint);
@@ -211,6 +211,8 @@ namespace ElementsExplorer
 
 		public uint256 GetHash()
 		{
+			if(!HasChanges)
+				return uint256.Zero;
 			MemoryStream ms = new MemoryStream();
 			BitcoinStream bs = new BitcoinStream(ms, true);
 			bs.ReadWrite(ref _UTXOs);

@@ -153,7 +153,7 @@ namespace ElementsExplorer.Tests
 				var alice = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
 				var utxoAlice = tester.Client.Sync(alice.Neuter(), null, null, true); //Track things do not wait
 				var utxoBob = tester.Client.Sync(bob.Neuter(), null, null, true); //Track things do not wait
-				Assert.True(utxoAlice.Confirmed.Reset);
+				Assert.False(utxoAlice.Confirmed.Reset);
 
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(alice, "0/1"), Money.Coins(1.0m));
 				id = tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/2"), Money.Coins(0.1m));
@@ -229,7 +229,7 @@ namespace ElementsExplorer.Tests
 				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
 				var utxo = tester.Client.Sync(key.Neuter(), null, null);
-				Assert.True(utxo.Confirmed.Reset);
+				Assert.False(utxo.Confirmed.Reset);
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 
 
@@ -273,7 +273,7 @@ namespace ElementsExplorer.Tests
 				var utxo = gettingUTXO.GetAwaiter().GetResult();
 
 
-				Assert.True(utxo.Confirmed.Reset);
+				Assert.False(utxo.Confirmed.Reset);
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(0, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(uint256.Zero, utxo.Confirmed.Hash);
@@ -286,7 +286,6 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				var bestBlockHash = tester.Runtime.RPC.GetBestBlockHash();
 				Assert.Equal(bestBlockHash, utxo.Confirmed.Hash);
-				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.Unconfirmed.Hash);
 
 				txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/1"), Money.Coins(1.0m));
 
@@ -301,7 +300,6 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/0"), utxo.Confirmed.UTXOs[0].KeyPath);
 				Assert.Equal(bestBlockHash, utxo.Confirmed.Hash);
-				Assert.Equal(utxo.Unconfirmed.GetHash(), utxo.Unconfirmed.Hash);
 
 				utxo = tester.Client.Sync(key.Neuter(), utxo.Confirmed.Hash, null, true);
 				Assert.False(utxo.Confirmed.Reset);
