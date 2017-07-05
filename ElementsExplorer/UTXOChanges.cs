@@ -5,56 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using NBitcoin.Crypto;
+using System.IO;
 
 namespace ElementsExplorer
 {
 	public class UTXOChanges : IBitcoinSerializable
 	{
-		byte _Reset;
-		public bool Reset
-		{
-			get
-			{
-				return _Reset == 1;
-			}
-			set
-			{
-				_Reset = (byte)(value ? 1 : 0);
-			}
-		}
-
-		uint256 _BlockHash = uint256.Zero;
-		public uint256 BlockHash
-		{
-			get
-			{
-				return _BlockHash;
-			}
-			set
-			{
-				_BlockHash = value;
-			}
-		}
-
-
-		uint256 _UnconfirmedHash = uint256.Zero;
-		public uint256 UnconfirmedHash
-		{
-			get
-			{
-				return _UnconfirmedHash;
-			}
-			set
-			{
-				_UnconfirmedHash = value;
-			}
-		}
-
 		public void ReadWrite(BitcoinStream stream)
 		{
-			stream.ReadWrite(ref _Reset);
-			stream.ReadWrite(ref _BlockHash);
-			stream.ReadWrite(ref _UnconfirmedHash);
 			stream.ReadWrite(ref _Unconfirmed);
 			stream.ReadWrite(ref _Confirmed);
 		}
@@ -96,19 +54,31 @@ namespace ElementsExplorer
 	}
 	public class UTXOChange : IBitcoinSerializable
 	{
-
-		List<OutPoint> _SpentOutpoints = new List<OutPoint>();
-		public List<OutPoint> SpentOutpoints
+		byte _Reset;
+		public bool Reset
 		{
 			get
 			{
-				return _SpentOutpoints;
+				return _Reset == 1;
 			}
 			set
 			{
-				_SpentOutpoints = value;
+				_Reset = (byte)(value ? 1 : 0);
 			}
 		}
+
+		uint256 _Hash = uint256.Zero;
+		public uint256 Hash
+		{
+			get
+			{
+				return _Hash;
+			}
+			set
+			{
+				_Hash = value;
+			}
+		}		
 
 
 		List<UTXO> _UTXOs = new List<UTXO>();
@@ -124,6 +94,19 @@ namespace ElementsExplorer
 			}
 		}
 
+		List<OutPoint> _SpentOutpoints = new List<OutPoint>();
+		public List<OutPoint> SpentOutpoints
+		{
+			get
+			{
+				return _SpentOutpoints;
+			}
+			set
+			{
+				_SpentOutpoints = value;
+			}
+		}
+
 		public bool HasChanges
 		{
 			get
@@ -134,8 +117,10 @@ namespace ElementsExplorer
 
 		public void ReadWrite(BitcoinStream stream)
 		{
-			stream.ReadWrite(ref _SpentOutpoints);
+			stream.ReadWrite(ref _Reset);
+			stream.ReadWrite(ref _Hash);
 			stream.ReadWrite(ref _UTXOs);
+			stream.ReadWrite(ref _SpentOutpoints);
 		}
 
 		public void LoadChanges(Transaction tx, Func<Script, KeyPath> getKeyPath)
@@ -204,6 +189,8 @@ namespace ElementsExplorer
 			var addedUTXOs = UTXOs.Where(utxo => !previousUTXOs.ContainsKey(utxo.Outpoint));
 
 			var diff = new UTXOChange();
+			diff.Hash = this.Hash;
+			diff.Reset = this.Reset;
 			foreach(var deleted in deletedUTXOs)
 			{
 				diff.SpentOutpoints.Add(deleted.Outpoint);
@@ -215,9 +202,19 @@ namespace ElementsExplorer
 			return diff;
 		}
 
+		internal void Clear()
+		{
+			UTXOs.Clear();
+			SpentOutpoints.Clear();
+		}
+
 		public uint256 GetHash()
 		{
-			return Hashes.Hash256(this.ToBytes());
+			MemoryStream ms = new MemoryStream();
+			BitcoinStream bs = new BitcoinStream(ms, true);
+			bs.ReadWrite(ref _UTXOs);
+			bs.ReadWrite(ref _SpentOutpoints);
+			return Hashes.Hash256(ms.ToArray());
 		}
 	}
 

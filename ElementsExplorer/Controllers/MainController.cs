@@ -97,19 +97,20 @@ namespace ElementsExplorer.Controllers
 						}
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
 						changes.Confirmed.LoadChanges(record.Transaction, getKeyPath);
-						changes.BlockHash = record.BlockHash;
+						changes.Confirmed.Hash = record.BlockHash;
 						if(record.BlockHash == lastBlockHash)
 							previousChanges = changes.Clone();
 					}
 				}
 
-				changes.Reset = previousChanges == null;
+				changes.Confirmed.Reset = previousChanges == null;
+				changes.Unconfirmed.Reset = true;
 				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
-				if(!changes.Reset)
+				if(!changes.Confirmed.Reset)
 					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);				
-				changes.UnconfirmedHash = changes.Unconfirmed.GetHash();
-				if(changes.UnconfirmedHash == unconfirmedHash)
-					changes.Unconfirmed = new UTXOChange();
+				changes.Unconfirmed.Hash = changes.Unconfirmed.GetHash();
+				if(changes.Unconfirmed.Hash == unconfirmedHash)
+					changes.Unconfirmed.Clear();
 
 				if(changes.HasChanges || !(await waitingTransaction))
 					break;

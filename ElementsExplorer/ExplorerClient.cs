@@ -21,6 +21,16 @@ namespace ElementsExplorer
 			_Network = network;
 		}
 
+		public UTXOChanges Sync(BitcoinExtPubKey extKey, UTXOChanges previousChange, bool noWait = false)
+		{
+			return SyncAsync(extKey, previousChange, noWait).GetAwaiter().GetResult();
+		}
+
+		public Task<UTXOChanges> SyncAsync(BitcoinExtPubKey extKey, UTXOChanges previousChange, bool noWait = false)
+		{
+			return SyncAsync(extKey, previousChange?.Confirmed?.Hash, previousChange?.Unconfirmed?.Hash, noWait);
+		}
+
 		public UTXOChanges Sync(BitcoinExtPubKey extKey, uint256 lastBlockHash, uint256 unconfirmedHash, bool noWait =false)
 		{
 			return SyncAsync(extKey, lastBlockHash, unconfirmedHash, noWait).GetAwaiter().GetResult();
