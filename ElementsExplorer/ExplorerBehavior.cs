@@ -192,7 +192,7 @@ namespace ElementsExplorer
 						db.Commit();
 
 						foreach(var tx in block.Object.Transactions)
-							ScanForAssetName(tx);
+							ScanForAssetName(tx, false);
 					}
 					foreach(var pubkey in pubKeys)
 					{
@@ -214,7 +214,7 @@ namespace ElementsExplorer
 					}
 					db.Commit();
 				}
-				ScanForAssetName(txPayload.Object);
+				ScanForAssetName(txPayload.Object, true);
 				foreach(var pubkey in pubKeys)
 				{
 					Notify(pubkey, true);
@@ -223,7 +223,7 @@ namespace ElementsExplorer
 
 		}
 
-		private void ScanForAssetName(Transaction tx)
+		private void ScanForAssetName(Transaction tx, bool logFailure)
 		{
 			var name = NamedIssuance.Extract(tx);
 			if(name != null)
@@ -232,7 +232,8 @@ namespace ElementsExplorer
 				if(result == Repository.SetNameResult.Success)
 					Logs.Explorer.LogInformation($"Name {name.Name} claimed by {name.AssetId}");
 				else
-					Logs.Explorer.LogInformation($"Name {name.Name} failed to be claimed by {name.AssetId}, cause: {result}");
+					if(logFailure)
+						Logs.Explorer.LogInformation($"Name {name.Name} failed to be claimed by {name.AssetId}, cause: {result}");
 			}
 		}
 
