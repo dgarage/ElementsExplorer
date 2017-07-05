@@ -176,7 +176,7 @@ namespace ElementsExplorer
 					{
 						foreach(var tx in block.Object.Transactions)
 						{
-							var pubKeys2 = GetInterestedWallet(tx);
+							var pubKeys2 = GetInterestedWallets(tx);
 							foreach(var pubkey in pubKeys2)
 							{
 								pubKeys.Add(pubkey);
@@ -205,7 +205,7 @@ namespace ElementsExplorer
 
 			message.Message.IfPayloadIs<TxPayload>(txPayload =>
 			{
-				var pubKeys = GetInterestedWallet(txPayload.Object);
+				var pubKeys = GetInterestedWallets(txPayload.Object);
 				using(var db = Runtime.Repository.CreateTransaction())
 				{
 					foreach(var pubkey in pubKeys)
@@ -233,7 +233,7 @@ namespace ElementsExplorer
 					Logs.Explorer.LogInformation($"Name {name.Name} claimed by {name.AssetId}");
 				else
 					if(logFailure)
-						Logs.Explorer.LogInformation($"Name {name.Name} failed to be claimed by {name.AssetId}, cause: {result}");
+					Logs.Explorer.LogInformation($"Name {name.Name} failed to be claimed by {name.AssetId}, cause: {result}");
 			}
 		}
 
@@ -255,7 +255,7 @@ namespace ElementsExplorer
 			}
 		}
 
-		private HashSet<ExtPubKey> GetInterestedWallet(Transaction tx)
+		private HashSet<ExtPubKey> GetInterestedWallets(Transaction tx)
 		{
 			var pubKeys = new HashSet<ExtPubKey>();
 			tx.CacheHashes();
@@ -266,7 +266,10 @@ namespace ElementsExplorer
 				{
 					var keyInfo = Runtime.Repository.GetKeyInformation(signer.ScriptPubKey);
 					if(keyInfo != null)
+					{
 						pubKeys.Add(new ExtPubKey(keyInfo.RootKey));
+						Runtime.Repository.MarkAsUsed(keyInfo);
+					}
 				}
 			}
 
@@ -274,7 +277,10 @@ namespace ElementsExplorer
 			{
 				var keyInfo = Runtime.Repository.GetKeyInformation(output.ScriptPubKey);
 				if(keyInfo != null)
+				{
 					pubKeys.Add(new ExtPubKey(keyInfo.RootKey));
+					Runtime.Repository.MarkAsUsed(keyInfo);
+				}
 			}
 			return pubKeys;
 		}
