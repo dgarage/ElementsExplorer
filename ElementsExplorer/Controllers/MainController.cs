@@ -187,10 +187,14 @@ namespace ElementsExplorer.Controllers
 		public async Task<bool> Broadcast()
 		{
 			BitcoinExtPubKey extPubKey = null;
+
+			//Crazy hack to get extPubKey... For some reason it is impossible to pass it as argument without crashing on linux
 			if(Request.Query.ContainsKey("extPubKey"))
 			{
 				extPubKey = new BitcoinExtPubKey(Request.Query["extPubKey"], Runtime.Network);
 			}
+			////
+
 			var tx = new Transaction();
 			var stream = new BitcoinStream(Request.Body, false);
 			tx.ReadWrite(stream);
