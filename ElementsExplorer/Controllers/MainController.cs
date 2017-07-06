@@ -124,6 +124,7 @@ namespace ElementsExplorer.Controllers
 					changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
 				}
 
+
 				if(actualLastBlockHash == lastBlockHash)
 					changes.Confirmed.Clear();
 				else if(previousChanges != null)
@@ -182,8 +183,10 @@ namespace ElementsExplorer.Controllers
 		}
 
 		[HttpPost]
-		[Route("broadcast")]
-		public async Task<bool> Broadcast()
+		[Route("broadcast/{extPubKey}")]
+		public async Task<bool> Broadcast(
+			[ModelBinder(BinderType = typeof(DestinationModelBinder))]
+			BitcoinExtPubKey extPubKey = null)
 		{
 			var tx = new Transaction();
 			var stream = new BitcoinStream(Request.Body, false);
@@ -196,6 +199,35 @@ namespace ElementsExplorer.Controllers
 			catch(RPCException ex)
 			{
 				Logs.Explorer.LogInformation($"Transaction {tx.GetHash()} failed to broadcast (Code: {ex.RPCCode}, Message: {ex.RPCCodeMessage}, Details: {ex.Message} )");
+				if(extPubKey != null && ex.Message.StartsWith("Missing inputs", StringComparison.OrdinalIgnoreCase))
+				{
+					Logs.Explorer.LogInformation("Trying to broadcast unconfirmed of the wallet");
+					var transactions = Runtime.Repository.GetTransactions(extPubKey);
+					foreach(var existing in transactions)
+					{
+						var height = GetHeight(existing.BlockHash);
+						if(height == MempoolHeight || height == OrphanHeight)
+						{
+							try
+							{
+								await Runtime.RPC.SendRawTransactionAsync(existing.Transaction);
+							}
+							catch { }
+						}
+					}
+
+					try
+					{
+
+						await Runtime.RPC.SendRawTransactionAsync(tx);
+						Logs.Explorer.LogInformation($"Broadcast success");
+						return true;
+					}
+					catch(RPCException)
+					{
+						Logs.Explorer.LogInformation($"Transaction {tx.GetHash()} failed to broadcast (Code: {ex.RPCCode}, Message: {ex.RPCCodeMessage}, Details: {ex.Message} )");
+					}
+				}
 				return false;
 			}
 		}
