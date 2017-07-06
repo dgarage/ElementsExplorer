@@ -183,10 +183,11 @@ namespace ElementsExplorer.Controllers
 		}
 
 		[HttpPost]
-		[Route("broadcast/{extPubKey}")]
+		[Route("broadcast")]
 		public async Task<bool> Broadcast(
+			[FromQuery]
 			[ModelBinder(BinderType = typeof(DestinationModelBinder))]
-			BitcoinExtPubKey extPubKey = null)
+				BitcoinExtPubKey extPubKey = null)
 		{
 			var tx = new Transaction();
 			var stream = new BitcoinStream(Request.Body, false);

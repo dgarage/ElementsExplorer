@@ -33,6 +33,10 @@ namespace ElementsExplorer.ModelBinders
 			}
 
 			string key = val.FirstValue as string;
+			if(key == null)
+			{
+				return TaskCache.CompletedTask;
+			}
 
 			var network = (Network)bindingContext.HttpContext.RequestServices.GetService(typeof(Network));
 			var data = Network.Parse(key, network);
