@@ -176,31 +176,38 @@ namespace ElementsExplorer
 					foreach(var tx in block.Object.Transactions)
 						tx.CacheHashes();
 
-					var interestedWalletsByTxId = block.Object
-													.Transactions
-													.ToDictionary(t => t.GetHash(), t => GetInterestedWallets(t));
-					using(var db = Runtime.Repository.CreateTransaction())
-					{
-						foreach(var tx in block.Object.Transactions)
-						{
-							var pubKeys2 = interestedWalletsByTxId[tx.GetHash()];
-							foreach(var pubkey in pubKeys2)
-							{
-								pubKeys.Add(pubkey);
-								db.InsertTransaction(pubkey, block.Object.GetHash(), tx);
-							}
-						}
-						var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
-						if(blockHeader != null)
-						{
-							_CurrentLocation = blockHeader.GetLocator();
-							Logs.Explorer.LogInformation($"Processed block {block.Object.GetHash()}");
-						}
-						db.Commit();
 
-						foreach(var tx in block.Object.Transactions)
-							ScanForAssetName(tx, false);
+					List<InsertTransaction> trackedTransactions = new List<InsertTransaction>();
+					foreach(var tx in block.Object.Transactions)
+					{
+						var pubKeys2 = GetInterestedWallets(tx);
+						foreach(var pubkey in pubKeys2)
+						{
+							pubKeys.Add(pubkey);
+							trackedTransactions.Add(
+								new InsertTransaction()
+								{
+									PubKey = pubkey,
+									TrackedTransaction = new TrackedTransaction()
+									{
+										BlockHash = block.Object.GetHash(),
+										Transaction = tx
+									}
+								});
+						}
 					}
+
+					Runtime.Repository.InsertTransactions(trackedTransactions.ToArray());
+					var blockHeader = Runtime.Chain.GetBlock(block.Object.GetHash());
+					if(blockHeader != null)
+					{
+						_CurrentLocation = blockHeader.GetLocator();
+						Logs.Explorer.LogInformation($"Processed block {block.Object.GetHash()}");
+					}
+
+					foreach(var tx in block.Object.Transactions)
+						ScanForAssetName(tx, false);
+
 					foreach(var pubkey in pubKeys)
 					{
 						Notify(pubkey, false);
@@ -213,14 +220,22 @@ namespace ElementsExplorer
 			message.Message.IfPayloadIs<TxPayload>(txPayload =>
 			{
 				var pubKeys = GetInterestedWallets(txPayload.Object);
-				using(var db = Runtime.Repository.CreateTransaction())
+
+				foreach(var pubkey in pubKeys)
 				{
-					foreach(var pubkey in pubKeys)
+					Runtime.Repository.InsertTransactions(new[]
 					{
-						db.InsertTransaction(pubkey, null, txPayload.Object);
-					}
-					db.Commit();
+						new InsertTransaction()
+						{
+							PubKey = pubkey,
+							TrackedTransaction = new TrackedTransaction()
+							{
+								Transaction = txPayload.Object
+							}
+						}
+					});
 				}
+
 				ScanForAssetName(txPayload.Object, true);
 				foreach(var pubkey in pubKeys)
 				{

@@ -23,7 +23,25 @@ namespace ElementsExplorer
 		{
 			get; set;
 		}
+
+		internal string GetRowKey()
+		{
+			return $"{Transaction.GetHash()}:{BlockHash}";
+		}
 	}
+
+	public class InsertTransaction
+	{
+		public ExtPubKey PubKey
+		{
+			get; set;
+		}
+		public TrackedTransaction TrackedTransaction
+		{
+			get; set;
+		}
+	}
+
 	public class KeyInformation
 	{
 		public KeyInformation()
@@ -47,33 +65,7 @@ namespace ElementsExplorer
 		{
 			get; set;
 		}
-	}
-
-	public class RepositoryTransaction : IDisposable
-	{
-		DBreeze.Transactions.Transaction _Transaction;
-		public RepositoryTransaction(DBreeze.Transactions.Transaction transaction)
-		{
-			if(transaction == null)
-				throw new ArgumentNullException("transaction");
-			_Transaction = transaction;
-		}
-
-		public void InsertTransaction(ExtPubKey pubkey, uint256 blockHash, Transaction transaction)
-		{
-			var tableName = $"T-{Hashes.Hash160(pubkey.ToBytes()).ToString()}";
-			_Transaction.Insert(tableName, Repository.GetTransactionRowName(blockHash, transaction), transaction.ToBytes());
-		}
-
-		public void Commit()
-		{
-			_Transaction.Commit();
-		}
-		public void Dispose()
-		{
-			_Transaction.Dispose();
-		}
-	}
+	}	
 
 	public class Repository : IDisposable
 	{
@@ -298,14 +290,22 @@ namespace ElementsExplorer
 			return result.ToArray();
 		}
 
-		public RepositoryTransaction CreateTransaction()
+		
+		public void InsertTransactions(InsertTransaction[] transactions)
 		{
-			return new RepositoryTransaction(_Engine.GetTransaction());
-		}
+			if(transactions.Length == 0)
+				return;
+			var groups = transactions.GroupBy(i => $"T-{Hashes.Hash160(i.PubKey.ToBytes()).ToString()}");
 
-		internal static string GetTransactionRowName(uint256 blockHash, Transaction transaction)
-		{
-			return $"{transaction.GetHash()}:{blockHash}";
+			using(var tx = _Engine.GetTransaction())
+			{
+				foreach(var group in groups)
+				{
+					foreach(var value in group)
+						tx.Insert(group.Key, value.TrackedTransaction.GetRowKey(), value.TrackedTransaction.Transaction.ToBytes());
+				}
+				tx.Commit();
+			}
 		}
 
 		public void CleanTransactions(ExtPubKey pubkey, List<TrackedTransaction> cleanList)
@@ -317,7 +317,7 @@ namespace ElementsExplorer
 			{
 				foreach(var tracked in cleanList)
 				{
-					tx.RemoveKey(tableName, GetTransactionRowName(tracked.BlockHash, tracked.Transaction));
+					tx.RemoveKey(tableName, tracked.GetRowKey());
 				}
 				tx.Commit();
 			}
