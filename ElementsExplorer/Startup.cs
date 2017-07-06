@@ -38,12 +38,7 @@ namespace ElementsExplorer
 			services.AddSingleton<IObjectModelValidator, NoObjectModelValidator>();
 			services.AddMvcCore()
 				.AddJsonFormatters()
-				.AddFormatterMappings();
-
-			services.Configure<FormOptions>(options =>
-			{
-				options.ValueLengthLimit = 1024 * 20;
-			});
+				.AddFormatterMappings();			
 		}
 
 		internal class NoObjectModelValidator : IObjectModelValidator
