@@ -13,6 +13,7 @@ using NBitcoin.JsonConverters;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace ElementsExplorer
 {
@@ -38,6 +39,11 @@ namespace ElementsExplorer
 			services.AddMvcCore()
 				.AddJsonFormatters()
 				.AddFormatterMappings();
+
+			services.Configure<FormOptions>(options =>
+			{
+				options.ValueLengthLimit = 1024 * 20;
+			});
 		}
 
 		internal class NoObjectModelValidator : IObjectModelValidator
