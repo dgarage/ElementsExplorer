@@ -131,10 +131,12 @@ namespace ElementsExplorer
 
 			
 			var existingUTXOs = new HashSet<OutPoint>(UTXOs.Select(u => u.Outpoint));
+			var removedUTXOs = new HashSet<OutPoint>(SpentOutpoints);
 
 			foreach(var input in tx.Inputs)
 			{
-				existingUTXOs.Remove(input.PrevOut);
+				if(existingUTXOs.Remove(input.PrevOut))
+					removedUTXOs.Add(input.PrevOut);
 			}
 
 			int index = -1;
@@ -153,6 +155,7 @@ namespace ElementsExplorer
 				}
 			}
 			UTXOs = UTXOs.Where(u => existingUTXOs.Contains(u.Outpoint)).ToList();
+			SpentOutpoints = removedUTXOs.ToList();
 		}
 
 		public bool HasConflict(Transaction tx)

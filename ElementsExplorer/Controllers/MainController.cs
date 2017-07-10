@@ -95,7 +95,7 @@ namespace ElementsExplorer.Controllers
 
 				conf = conf.TopologicalSort(DependsOn(conf.ToList())).ToList();
 				unconf = unconf.TopologicalSort(DependsOn(unconf.ToList())).ToList();
-
+					
 				foreach(var item in conf.Concat(unconf))
 				{
 					var record = item.Record;
