@@ -19,6 +19,19 @@ namespace ElementsExplorer.Controllers
 	[Route("v1")]
 	public class MainController : Controller
 	{
+		class AnnotatedTransaction
+		{
+			public int Height
+			{
+				get;
+				internal set;
+			}
+			public TrackedTransaction Record
+			{
+				get;
+				internal set;
+			}
+		}
 		public MainController(ExplorerRuntime runtime)
 		{
 			if(runtime == null)
@@ -69,7 +82,7 @@ namespace ElementsExplorer.Controllers
 				var transactions = Runtime.Repository
 										.GetTransactions(extPubKey)
 										.Select(t =>
-										new
+										new AnnotatedTransaction
 										{
 											Height = GetHeight(t.BlockHash),
 											Record = t
@@ -77,16 +90,13 @@ namespace ElementsExplorer.Controllers
 										.Where(u => u.Height != OrphanHeight)
 										.ToList();
 
+				var unconf = transactions.Where(tx => tx.Height == MempoolHeight);
+				var conf = transactions.Where(tx => tx.Height != MempoolHeight);
 
-				transactions = transactions
-								.TopologicalSort(t =>
-								{
-									HashSet<uint256> dependsOn = new HashSet<uint256>(t.Record.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
-									return transactions.Where(u => dependsOn.Contains(u.Record.Transaction.GetHash()) ||  //Depends on parent transaction
-																	((u.Height < t.Height))); //Depends on earlier transaction
-								}).ToList();
+				conf = conf.TopologicalSort(DependsOn(conf.ToList())).ToList();
+				unconf = unconf.TopologicalSort(DependsOn(unconf.ToList())).ToList();
 
-				foreach(var item in transactions)
+				foreach(var item in conf.Concat(unconf))
 				{
 					var record = item.Record;
 					if(record.BlockHash == null)
@@ -144,6 +154,16 @@ namespace ElementsExplorer.Controllers
 
 			return new FileContentResult(changes.ToBytes(), "application/octet-stream");
 
+		}
+
+		Func<AnnotatedTransaction, IEnumerable<AnnotatedTransaction>> DependsOn(IEnumerable<AnnotatedTransaction> transactions)
+		{
+			return t =>
+			{
+				HashSet<uint256> dependsOn = new HashSet<uint256>(t.Record.Transaction.Inputs.Select(txin => txin.PrevOut.Hash));
+				return transactions.Where(u => dependsOn.Contains(u.Record.Transaction.GetHash()) ||  //Depends on parent transaction
+												((u.Height < t.Height))); //Depends on earlier transaction
+			};
 		}
 
 		private async Task<bool> WaitingTransaction(BitcoinExtPubKey extPubKey)
