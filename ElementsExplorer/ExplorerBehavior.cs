@@ -313,6 +313,7 @@ namespace ElementsExplorer
 			{
 				Logs.Explorer.LogInformation($"Handshaked Elements node");
 				node.SendMessageAsync(new SendHeadersPayload());
+				node.SendMessageAsync(new MempoolPayload());
 				AskBlocks();
 			}
 			if(node.State == NodeState.Offline)
