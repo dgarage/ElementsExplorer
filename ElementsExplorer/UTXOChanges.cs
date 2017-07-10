@@ -163,7 +163,7 @@ namespace ElementsExplorer
 			var existingUTXOs = new HashSet<OutPoint>(UTXOs.Select(u => u.Outpoint));
 			var spentOutpoints = new HashSet<OutPoint>(SpentOutpoints);
 
-			//Check for conflicts
+			//If there is double spending
 			foreach(var input in tx.Inputs)
 			{
 				if(spentOutpoints.Contains(input.PrevOut))
@@ -176,7 +176,7 @@ namespace ElementsExplorer
 			{
 				index++;
 				var outpoint = new OutPoint(tx.GetHash(), index);
-				if(existingUTXOs.Contains(outpoint))
+				if(existingUTXOs.Contains(outpoint) || spentOutpoints.Contains(outpoint))
 					return true;
 				existingUTXOs.Add(outpoint);
 			}

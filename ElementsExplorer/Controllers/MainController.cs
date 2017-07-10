@@ -101,8 +101,7 @@ namespace ElementsExplorer.Controllers
 					var record = item.Record;
 					if(record.BlockHash == null)
 					{
-						if(changes.Unconfirmed.HasConflict(record.Transaction) ||
-							changes.Confirmed.HasConflict(record.Transaction))
+						if(changes.Unconfirmed.HasConflict(record.Transaction))
 						{
 							cleanList.Add(record);
 							continue;
