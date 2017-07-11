@@ -79,23 +79,14 @@ namespace ElementsExplorer.Controllers
 			{
 				cleanList = new List<TrackedTransaction>();
 				changes = new UTXOChanges();
-				var transactions = Runtime.Repository
-										.GetTransactions(extPubKey)
-										.Select(t =>
-										new AnnotatedTransaction
-										{
-											Height = GetHeight(t.BlockHash),
-											Record = t
-										})
-										.Where(u => u.Height != OrphanHeight)
-										.ToList();
+				List<AnnotatedTransaction> transactions = GetAnnotatedTransactions(extPubKey);
 
 				var unconf = transactions.Where(tx => tx.Height == MempoolHeight);
 				var conf = transactions.Where(tx => tx.Height != MempoolHeight);
 
 				conf = conf.TopologicalSort(DependsOn(conf.ToList())).ToList();
 				unconf = unconf.TopologicalSort(DependsOn(unconf.ToList())).ToList();
-					
+
 				foreach(var item in conf.Concat(unconf))
 				{
 					var record = item.Record;
@@ -153,6 +144,20 @@ namespace ElementsExplorer.Controllers
 
 			return new FileContentResult(changes.ToBytes(), "application/octet-stream");
 
+		}
+
+		private List<AnnotatedTransaction> GetAnnotatedTransactions(BitcoinExtPubKey extPubKey)
+		{
+			return Runtime.Repository
+									.GetTransactions(extPubKey)
+									.Select(t =>
+									new AnnotatedTransaction
+									{
+										Height = GetHeight(t.BlockHash),
+										Record = t
+									})
+									.Where(u => u.Height != OrphanHeight)
+									.ToList();
 		}
 
 		Func<AnnotatedTransaction, IEnumerable<AnnotatedTransaction>> DependsOn(IEnumerable<AnnotatedTransaction> transactions)
@@ -228,18 +233,15 @@ namespace ElementsExplorer.Controllers
 				if(extPubKey != null && ex.Message.StartsWith("Missing inputs", StringComparison.OrdinalIgnoreCase))
 				{
 					Logs.Explorer.LogInformation("Trying to broadcast unconfirmed of the wallet");
-					var transactions = Runtime.Repository.GetTransactions(extPubKey);
+					var transactions = GetAnnotatedTransactions(extPubKey).Where(t => t.Height == MempoolHeight).ToList();
+					transactions = transactions.TopologicalSort(DependsOn(transactions)).ToList();
 					foreach(var existing in transactions)
 					{
-						var height = GetHeight(existing.BlockHash);
-						if(height == MempoolHeight || height == OrphanHeight)
+						try
 						{
-							try
-							{
-								await Runtime.RPC.SendRawTransactionAsync(existing.Transaction);
-							}
-							catch { }
+							await Runtime.RPC.SendRawTransactionAsync(existing.Record.Transaction);
 						}
+						catch { }
 					}
 
 					try
