@@ -226,9 +226,9 @@ namespace ElementsExplorer.Tests
 			using(var tester = ServerTester.Create())
 			{
 				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
-				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
+				var utxo = tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
 				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
-				var utxo = tester.Client.Sync(key.Neuter(), null, null);
+				utxo = tester.Client.Sync(key.Neuter(), utxo);
 				Assert.False(utxo.Confirmed.Reset);
 				Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
 
@@ -267,10 +267,10 @@ namespace ElementsExplorer.Tests
 			using(var tester = ServerTester.Create())
 			{
 				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
-				tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
-				var gettingUTXO = tester.Client.SyncAsync(key.Neuter(), null, null);
+				var utxo = tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
+				var gettingUTXO = tester.Client.SyncAsync(key.Neuter(), utxo);
 				var txId = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
-				var utxo = gettingUTXO.GetAwaiter().GetResult();
+				utxo = gettingUTXO.GetAwaiter().GetResult();
 
 
 				Assert.False(utxo.Confirmed.Reset);

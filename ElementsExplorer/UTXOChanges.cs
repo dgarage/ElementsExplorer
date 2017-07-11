@@ -214,8 +214,6 @@ namespace ElementsExplorer
 
 		public uint256 GetHash()
 		{
-			if(!HasChanges)
-				return uint256.Zero;
 			MemoryStream ms = new MemoryStream();
 			BitcoinStream bs = new BitcoinStream(ms, true);
 			bs.ReadWrite(ref _UTXOs);
