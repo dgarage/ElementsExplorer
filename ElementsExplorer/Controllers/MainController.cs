@@ -78,6 +78,7 @@ namespace ElementsExplorer.Controllers
 			while(true)
 			{
 				cleanList = new List<TrackedTransaction>();
+				HashSet<uint256> conflictedUnconf = new HashSet<uint256>();
 				changes = new UTXOChanges();
 				List<AnnotatedTransaction> transactions = GetAnnotatedTransactions(extPubKey);
 
@@ -92,9 +93,14 @@ namespace ElementsExplorer.Controllers
 					var record = item.Record;
 					if(record.BlockHash == null)
 					{
-						if(changes.Unconfirmed.HasConflict(record.Transaction))
+						if( //A parent conflicted with the current utxo
+							record.Transaction.Inputs.Any(i => conflictedUnconf.Contains(i.PrevOut.Hash)) 
+							||
+							//Conflict with the current utxo
+							changes.Unconfirmed.HasConflict(record.Transaction))
 						{
 							cleanList.Add(record);
+							conflictedUnconf.Add(record.Transaction.GetHash());
 							continue;
 						}
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
