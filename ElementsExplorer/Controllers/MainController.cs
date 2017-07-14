@@ -96,11 +96,16 @@ namespace ElementsExplorer.Controllers
 						if( //A parent conflicted with the current utxo
 							record.Transaction.Inputs.Any(i => conflictedUnconf.Contains(i.PrevOut.Hash)) 
 							||
-							//Conflict with the current utxo
-							changes.Unconfirmed.HasConflict(record.Transaction))
+							//Conflict with the confirmed utxo
+							changes.Confirmed.HasConflict(record.Transaction))
 						{
 							cleanList.Add(record);
 							conflictedUnconf.Add(record.Transaction.GetHash());
+							continue;
+						}
+						if(changes.Unconfirmed.HasConflict(record.Transaction))
+						{
+							Logs.Explorer.LogInformation($"Conflicts in the mempool. {record.Transaction.GetHash()} ignored");
 							continue;
 						}
 						changes.Unconfirmed.LoadChanges(record.Transaction, getKeyPath);
