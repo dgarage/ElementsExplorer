@@ -144,7 +144,10 @@ namespace ElementsExplorer.Controllers
 					changes.Confirmed = changes.Confirmed.Diff(previousChanges.Confirmed);
 				}
 				else
+				{
 					changes.Confirmed.Reset = true;
+					changes.Confirmed.SpentOutpoints.Clear();
+				}
 
 				if(changes.HasChanges || !(await waitingTransaction))
 					break;

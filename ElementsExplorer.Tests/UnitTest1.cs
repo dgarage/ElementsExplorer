@@ -9,6 +9,7 @@ using Xunit.Abstractions;
 using NBitcoin.RPC;
 using System.Text;
 using NBitcoin.Crypto;
+using System.Collections.Generic;
 
 namespace ElementsExplorer.Tests
 {
@@ -170,7 +171,7 @@ namespace ElementsExplorer.Tests
 				LockTestCoins(tester.Runtime.RPC);
 				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(alice, "0/1"));
 				tester.Runtime.RPC.SendToAddress(AddressOf(bob, "0/3"), Money.Coins(0.6m));
-				
+
 				utxoAlice = tester.Client.Sync(alice.Neuter(), utxoAlice);
 				utxoBob = tester.Client.Sync(bob.Neuter(), utxoBob);
 				Assert.True(utxoAlice.Unconfirmed.Reset);
@@ -217,6 +218,57 @@ namespace ElementsExplorer.Tests
 				Assert.Equal(3, utxo.Confirmed.UTXOs.Count);
 				utxo = tester.Client.Sync(key.Neuter(), utxo, true);
 				Assert.False(utxo.HasChanges);
+			}
+		}
+
+
+		[Fact]
+		public void CanTrackSeveralTransactions()
+		{
+			using(var tester = ServerTester.Create())
+			{
+				var key = new BitcoinExtKey(new ExtKey(), tester.Runtime.Network);
+				var utxo = tester.Client.Sync(key.Neuter(), null, null, true); //Track things do not wait
+
+				var addresses = new HashSet<Script>();
+				tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(key, "0/0"));
+				var id = tester.Runtime.RPC.SendToAddress(AddressOf(key, "0/0"), Money.Coins(1.0m));
+				addresses.Add(AddressOf(key, "0/0").ScriptPubKey);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo);
+
+				var coins = Money.Coins(1.0m);
+				int i = 0;
+				for(i = 0; i < 20; i++)
+				{
+					LockTestCoins(tester.Runtime.RPC, addresses);
+					var spendable = tester.Runtime.RPC.ListUnspent(0, 0);
+					coins = coins - Money.Coins(0.001m);
+					var destination = AddressOf(key, $"0/{i + 1}");
+
+					tester.Runtime.RPC.ImportPrivKey(PrivateKeyOf(key, $"0/{i + 1}"));
+					tester.Runtime.RPC.SendToAddress(destination, coins);
+					addresses.Add(destination.ScriptPubKey);
+				}
+
+				while(true)
+				{
+					utxo = tester.Client.Sync(key.Neuter(), utxo);
+					if(!utxo.HasChanges)
+						Assert.False(true, "should have changes");
+					Assert.False(utxo.Confirmed.Reset);
+					Assert.True(utxo.Unconfirmed.Reset);
+					Assert.Equal(1, utxo.Unconfirmed.UTXOs.Count);
+					if(new KeyPath($"0/{i}").Equals(utxo.Unconfirmed.UTXOs[0].KeyPath))
+						break;
+				}
+
+				tester.Runtime.RPC.Generate(1);
+
+				utxo = tester.Client.Sync(key.Neuter(), utxo);
+				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
+				Assert.True(utxo.Confirmed.Reset);
+				Assert.Equal(0, utxo.Confirmed.SpentOutpoints.Count);
 			}
 		}
 
@@ -360,10 +412,18 @@ namespace ElementsExplorer.Tests
 			}
 		}
 
-		private void LockTestCoins(RPCClient rpc)
+		private void LockTestCoins(RPCClient rpc, HashSet<Script> keepAddresses = null)
 		{
-			var outpoints = rpc.ListUnspent().Where(l => l.Address == null).Select(o => o.OutPoint).ToArray();
-			rpc.LockUnspent(outpoints);
+			if(keepAddresses == null)
+			{
+				var outpoints = rpc.ListUnspent().Where(l => l.Address == null).Select(o => o.OutPoint).ToArray();
+				rpc.LockUnspent(outpoints);
+			}
+			else
+			{
+				var outpoints = rpc.ListUnspent(0, 999999).Where(l => !keepAddresses.Contains(l.ScriptPubKey)).Select(c => c.OutPoint).ToArray();
+				rpc.LockUnspent(outpoints);
+			}
 		}
 
 		private BitcoinSecret PrivateKeyOf(BitcoinExtKey key, string path)
