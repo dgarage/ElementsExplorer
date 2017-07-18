@@ -334,6 +334,7 @@ namespace ElementsExplorer.Tests
 				tester.Runtime.RPC.Generate(1);
 				var prevUtxo = utxo;
 				utxo = tester.Client.Sync(key.Neuter(), prevUtxo);
+				Assert.True(utxo.Unconfirmed.Reset);
 				Assert.Equal(0, utxo.Unconfirmed.UTXOs.Count);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				var bestBlockHash = tester.Runtime.RPC.GetBestBlockHash();
@@ -401,7 +402,7 @@ namespace ElementsExplorer.Tests
 				tester.Runtime.RPC.Generate(1);
 
 				utxo = tester.Client.Sync(key.Neuter(), before01Spend, utxo.Unconfirmed.Hash);
-				Assert.False(utxo.Unconfirmed.HasChanges);
+				Assert.True(utxo.Unconfirmed.HasChanges);
 				Assert.Equal(1, utxo.Confirmed.UTXOs.Count);
 				Assert.Equal(new KeyPath("0/3"), utxo.Confirmed.UTXOs[0].KeyPath);
 				Assert.Equal(1, utxo.Confirmed.SpentOutpoints.Count);

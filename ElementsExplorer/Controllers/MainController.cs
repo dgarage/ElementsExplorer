@@ -126,14 +126,12 @@ namespace ElementsExplorer.Controllers
 					}
 				}
 
+				changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
 				changes.Unconfirmed.Hash = changes.Unconfirmed.GetHash();
 				if(changes.Unconfirmed.Hash == unconfirmedHash)
 					changes.Unconfirmed.Clear();
 				else
-				{
 					changes.Unconfirmed.Reset = true;
-					changes.Unconfirmed = changes.Unconfirmed.Diff(changes.Confirmed);
-				}
 
 
 				if(actualLastBlockHash == lastBlockHash)
