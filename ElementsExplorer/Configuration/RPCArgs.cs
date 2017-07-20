@@ -102,7 +102,7 @@ namespace ElementsExplorer.Configuration
 			}
 			Logs.Configuration.LogInformation("RPC connection successfull");
 
-			if(rpcClient.GetBlockHash(0) != network.GenesisHash)
+			if(network.GenesisHash != null && rpcClient.GetBlockHash(0) != network.GenesisHash)
 			{
 				Logs.Configuration.LogError("The RPC server is not using the chain " + network.Name);
 				throw new ConfigException();

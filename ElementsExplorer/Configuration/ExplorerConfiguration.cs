@@ -8,6 +8,8 @@ using System.IO;
 using System.Net;
 using ElementsExplorer.Logging;
 using NBitcoin.Protocol;
+using NBitcoin.DataEncoders;
+using NBitcoin.RPC;
 
 namespace ElementsExplorer.Configuration
 {
@@ -59,7 +61,7 @@ namespace ElementsExplorer.Configuration
 
 			Network = args.Contains("-testnet", StringComparer.OrdinalIgnoreCase) ? Network.TestNet :
 				args.Contains("-regtest", StringComparer.OrdinalIgnoreCase) ? Network.RegTest :
-				Network.Main;
+				Network.DefaultMain;
 
 			if(ConfigurationFile != null)
 			{
@@ -67,7 +69,7 @@ namespace ElementsExplorer.Configuration
 				var configTemp = TextFileConfiguration.Parse(File.ReadAllText(ConfigurationFile));
 				Network = configTemp.GetOrDefault<bool>("testnet", false) ? Network.TestNet :
 						  configTemp.GetOrDefault<bool>("regtest", false) ? Network.RegTest :
-						  Network.Main;
+						  Network.DefaultMain;
 			}
 			if(DataDir == null)
 			{
@@ -78,9 +80,6 @@ namespace ElementsExplorer.Configuration
 			{
 				ConfigurationFile = GetDefaultConfigurationFile();
 			}
-			Logs.Configuration.LogInformation("Network: " + Network);
-			Logs.Configuration.LogInformation("Data directory set to " + DataDir);
-			Logs.Configuration.LogInformation("Configuration file set to " + ConfigurationFile);
 
 			if(!Directory.Exists(DataDir))
 				throw new ConfigurationException("Data directory does not exists");
@@ -88,6 +87,16 @@ namespace ElementsExplorer.Configuration
 			var consoleConfig = new TextFileConfiguration(args);
 			var config = TextFileConfiguration.Parse(File.ReadAllText(ConfigurationFile));
 			consoleConfig.MergeInto(config, true);
+
+			if(Network == Network.DefaultMain)
+			{
+				var rpc = RPCArgs.Parse(config, Network).ConfigureRPCClient(Network);
+				Network = CreateNetwork(rpc.GetBlock(0));
+			}
+
+			Logs.Configuration.LogInformation("Network: " + Network);
+			Logs.Configuration.LogInformation("Data directory set to " + DataDir);
+			Logs.Configuration.LogInformation("Configuration file set to " + ConfigurationFile);
 
 			Rescan = config.GetOrDefault<bool>("rescan", false);
 			var defaultPort = config.GetOrDefault<int>("port", 37123);
@@ -103,6 +112,13 @@ namespace ElementsExplorer.Configuration
 			RPC = RPCArgs.Parse(config, Network);
 			NodeEndpoint = ConvertToEndpoint(config.GetOrDefault<string>("node.endpoint", "127.0.0.1"), Network.DefaultPort);
 			return this;
+		}
+
+		private Network CreateNetwork(Block genesisblock)
+		{
+			if(genesisblock == null)
+				return null;
+			return Network.CreateNetwork("main", genesisblock);
 		}
 
 		public string[] GetUrls()

@@ -39,7 +39,7 @@ namespace ElementsExplorer.Configuration
 			{
 				Directory.CreateDirectory(directory);
 			}
-			directory = Path.Combine(directory, network.Name);
+			directory = Path.Combine(directory, network?.Name ?? "elements");
 			if(!Directory.Exists(directory))
 			{
 				Logs.Configuration.LogInformation("Creating data directory");
