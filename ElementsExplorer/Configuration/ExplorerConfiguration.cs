@@ -88,10 +88,11 @@ namespace ElementsExplorer.Configuration
 			var config = TextFileConfiguration.Parse(File.ReadAllText(ConfigurationFile));
 			consoleConfig.MergeInto(config, true);
 
-			if(Network == Network.DefaultMain)
+			if(Network == Network.DefaultMain || Network == Network.RegTest)
 			{
 				var rpc = RPCArgs.Parse(config, Network).ConfigureRPCClient(Network);
-				Network = CreateNetwork(rpc.GetBlock(0));
+				Network = CreateNetwork(Network, rpc.GetBlock(0));
+				RPCArgs.CheckNetwork(Network, rpc);
 			}
 
 			Logs.Configuration.LogInformation("Network: " + Network);
@@ -114,11 +115,11 @@ namespace ElementsExplorer.Configuration
 			return this;
 		}
 
-		private Network CreateNetwork(Block genesisblock)
+		private Network CreateNetwork(Network parent, Block genesisblock)
 		{
 			if(genesisblock == null)
 				return null;
-			return Network.CreateNetwork("main", genesisblock);
+			return Network.CreateNetwork("explorernetwork", parent, genesisblock);
 		}
 
 		public string[] GetUrls()
