@@ -36,6 +36,8 @@ namespace ElementsExplorer
 								.Where(data => data != null && data.Length == 1)
 								.Select(data => Encoding.UTF8.GetString(data.First()))
 								.FirstOrDefault();
+                if(name == null)
+                    return null;
 				return new NamedIssuance() { Name = name, AssetId = assetId };
 			}
 			catch { return null; }
