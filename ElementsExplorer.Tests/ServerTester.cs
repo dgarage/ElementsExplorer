@@ -98,6 +98,7 @@ namespace ElementsExplorer.Tests
 					NoTest = true
 				};
 				conf.NodeEndpoint = Explorer.Endpoint;
+				conf.Network = ExplorerConfiguration.CreateNetwork(conf.Network, Explorer.CreateRPCClient().GetBlock(0));
 
 				Runtime = conf.CreateRuntime();
 

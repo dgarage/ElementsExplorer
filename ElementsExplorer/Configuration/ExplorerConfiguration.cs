@@ -115,11 +115,11 @@ namespace ElementsExplorer.Configuration
 			return this;
 		}
 
-		private Network CreateNetwork(Network parent, Block genesisblock)
+		public static Network CreateNetwork(Network parent, Block genesisblock)
 		{
 			if(genesisblock == null)
 				return null;
-			return Network.CreateNetwork("explorernetwork", parent, genesisblock);
+			return parent.CreateNetwork("explorernetwork", parent, genesisblock);
 		}
 
 		public string[] GetUrls()
