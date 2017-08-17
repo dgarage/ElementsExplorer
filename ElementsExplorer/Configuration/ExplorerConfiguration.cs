@@ -112,14 +112,28 @@ namespace ElementsExplorer.Configuration
 
 			RPC = RPCArgs.Parse(config, Network);
 			NodeEndpoint = ConvertToEndpoint(config.GetOrDefault<string>("node.endpoint", "127.0.0.1"), Network.DefaultPort);
+			CacheChain = config.GetOrDefault<bool>("cachechain", true);
+			StartHeight = config.GetOrDefault<int>("startheight", 0);
 			return this;
+		}
+
+		public int StartHeight
+		{
+			get; set;
 		}
 
 		public static Network CreateNetwork(Network parent, Block genesisblock)
 		{
 			if(genesisblock == null)
 				return null;
-			return parent.CreateNetwork("explorernetwork", parent, genesisblock);
+			try
+			{
+				return parent.CreateNetwork("explorernetwork", parent, genesisblock);
+			}
+			catch
+			{
+				return Network.GetNetwork("explorernetwork");
+			}
 		}
 
 		public string[] GetUrls()
@@ -130,6 +144,11 @@ namespace ElementsExplorer.Configuration
 		public IPEndPoint NodeEndpoint
 		{
 			get; set;
+		}
+		public bool CacheChain
+		{
+			get;
+			set;
 		}
 
 		public ExplorerRuntime CreateRuntime()

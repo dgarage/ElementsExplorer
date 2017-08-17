@@ -446,9 +446,13 @@ namespace ElementsExplorer.Tests
 		{
 			using(var tester = ServerTester.Create())
 			{
-				Assert.True(tester.Client.Broadcast(_GoodTransaction));
-				_GoodTransaction.Inputs[0].PrevOut.N = 999;
-				Assert.False(tester.Client.Broadcast(_GoodTransaction));
+				var tx = new Transaction();
+				tx.Outputs.Add(new TxOut(Money.Coins(1.0m), new Key()));
+				var funded = tester.User1.CreateRPCClient().FundRawTransaction(tx);
+				var signed = tester.User1.CreateRPCClient().SignRawTransaction(funded.Transaction);
+				Assert.True(tester.Client.Broadcast(signed));
+				signed.Inputs[0].PrevOut.N = 999;
+				Assert.False(tester.Client.Broadcast(signed));
 			}
 		}
 

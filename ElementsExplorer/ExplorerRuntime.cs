@@ -30,9 +30,23 @@ namespace ElementsExplorer
 			if(configuration == null)
 				throw new ArgumentNullException("configuration");
 			Network = configuration.Network;
+			Chain = new ConcurrentChain(Network.GetGenesis().Header);
 			RPC = configuration.RPC.ConfigureRPCClient(configuration.Network);
 			NodeEndpoint = configuration.NodeEndpoint;
-			ServerUrls = configuration.GetUrls();			
+			ServerUrls = configuration.GetUrls();
+
+			var cachePath = Path.Combine(configuration.DataDir, "chain.dat");
+			if(configuration.CacheChain)
+			{
+				Logs.Configuration.LogInformation($"Loading chain from cache...");
+				if(File.Exists(cachePath))
+				{
+					Chain.Load(File.ReadAllBytes(cachePath));
+				}
+			}
+
+			Logs.Configuration.LogInformation($"Loading chain from node...");
+			var heightBefore = Chain.Height;
 			try
 			{
 				if(!configuration.RPC.NoTest)
@@ -43,6 +57,7 @@ namespace ElementsExplorer
 						var cts = new CancellationTokenSource();
 						cts.CancelAfter(5000);
 						node.VersionHandshake(cts.Token);
+						node.SynchronizeChain(Chain);
 					}
 					Logs.Configuration.LogInformation("Node connection successfull");
 				}
@@ -50,6 +65,17 @@ namespace ElementsExplorer
 			catch(Exception ex)
 			{
 				Logs.Configuration.LogError("Error while connecting to node: " + ex.Message);
+				throw new ConfigException();
+			}
+
+			Logs.Configuration.LogInformation($"Chain loaded from node");
+
+			if(configuration.CacheChain && heightBefore != Chain.Height)
+			{
+				Logs.Configuration.LogInformation($"Saving chain to cache...");
+				var ms = new MemoryStream();
+				Chain.WriteTo(ms);
+				File.WriteAllBytes(cachePath, ms.ToArray());
 			}
 
 			var dbPath = Path.Combine(configuration.DataDir, "db");
@@ -59,19 +85,11 @@ namespace ElementsExplorer
 				Logs.Configuration.LogInformation("Rescanning...");
 				Repository.SetIndexProgress(null);
 			}
-			Chain = new ConcurrentChain(Network.GetGenesis().Header);			
 		}
 
-		public void StartNodeListener()
+		public void StartNodeListener(int startHeight)
 		{
-			using(var node = Node.Connect(Network, NodeEndpoint))
-			{
-				var cts = new CancellationTokenSource();
-				cts.CancelAfter(5000);
-				node.VersionHandshake(cts.Token);
-				Chain = node.GetChain();
-			}
-			_Nodes = CreateNodeGroup(Chain);
+			_Nodes = CreateNodeGroup(Chain, startHeight);
 			while(_Nodes.ConnectedNodes.Count == 0)
 				Thread.Sleep(10);
 		}
@@ -117,7 +135,7 @@ namespace ElementsExplorer
 				.Build();
 		}
 
-		NodesGroup CreateNodeGroup(ConcurrentChain chain)
+		NodesGroup CreateNodeGroup(ConcurrentChain chain, int startHeight)
 		{
 			AddressManager manager = new AddressManager();
 			manager.Add(new NetworkAddress(NodeEndpoint), IPAddress.Loopback);
@@ -132,7 +150,7 @@ namespace ElementsExplorer
 						PeersToDiscover = 1,
 						Mode = AddressManagerBehaviorMode.None
 					},
-					new ExplorerBehavior(this),
+					new ExplorerBehavior(this, chain) { StartHeight = startHeight },
 					new ChainBehavior(chain)
 					{
 						CanRespondToGetHeaders = false

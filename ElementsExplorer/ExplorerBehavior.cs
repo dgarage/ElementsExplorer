@@ -17,11 +17,24 @@ namespace ElementsExplorer
 {
 	public class ExplorerBehavior : NodeBehavior
 	{
-		public ExplorerBehavior(ExplorerRuntime runtime)
+		public ExplorerBehavior(ExplorerRuntime runtime, ConcurrentChain chain)
 		{
 			if(runtime == null)
 				throw new ArgumentNullException("runtime");
+			if(chain == null)
+				throw new ArgumentNullException(nameof(chain));
+			_Chain = chain;
 			_Runtime = runtime;
+		}
+
+
+		private readonly ConcurrentChain _Chain;
+		public ConcurrentChain Chain
+		{
+			get
+			{
+				return _Chain;
+			}
 		}
 
 		private readonly ExplorerRuntime _Runtime;
@@ -32,9 +45,16 @@ namespace ElementsExplorer
 				return _Runtime;
 			}
 		}
+
+		public int StartHeight
+		{
+			get;
+			set;
+		}
+
 		public override object Clone()
 		{
-			return new ExplorerBehavior(Runtime);
+			return new ExplorerBehavior(Runtime, _Chain);
 		}
 
 		Timer _Timer;
@@ -88,14 +108,16 @@ namespace ElementsExplorer
 				return;
 			if(_InFlights.Count != 0)
 				return;
-			var currentLocation = _CurrentLocation ?? new BlockLocator() { Blocks = { Runtime.Network.GenesisHash } };
-			var chainFork = Runtime.Chain.FindFork(currentLocation);
+			var currentLocation = _CurrentLocation ?? new BlockLocator() { Blocks = { Chain.GetBlock(StartHeight).HashBlock } }; ;
+			var currentBlock = Chain.FindFork(currentLocation);
+			if(currentBlock.Height < StartHeight)
+				currentBlock = Chain.GetBlock(StartHeight) ?? pendingTip;
 
 			//Up to date
-			if(pendingTip.HashBlock == currentLocation.Blocks[0])
+			if(pendingTip.HashBlock == currentBlock.HashBlock)
 				return;
 
-			var toDownload = pendingTip.EnumerateToGenesis().TakeWhile(b => b.HashBlock != currentLocation.Blocks[0]).ToArray();
+			var toDownload = pendingTip.EnumerateToGenesis().TakeWhile(b => b.HashBlock != currentBlock.HashBlock).ToArray();
 			Array.Reverse(toDownload);
 			var invs = toDownload.Take(10)
 				.Select(b => new InventoryVector(AttachedNode.AddSupportedOptions(InventoryType.MSG_BLOCK), b.HashBlock))

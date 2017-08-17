@@ -104,7 +104,7 @@ namespace ElementsExplorer.Tests
 
 				Runtime.Repository.SetIndexProgress(new BlockLocator() { Blocks = { Runtime.RPC.GetBestBlockHash() } });
 
-				Runtime.StartNodeListener();
+				Runtime.StartNodeListener(conf.StartHeight);
 				Host = Runtime.CreateWebHost();
 				Host.Start();
 			}
